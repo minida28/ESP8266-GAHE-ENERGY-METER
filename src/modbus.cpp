@@ -226,49 +226,49 @@ void modbus_loop() {
 
     //float Voltage;
     temp = (unsigned long) regs[0] << 16 | regs[1];
-    Voltage = *(float*)temp;
+    Voltage = *(float*)&temp;
 
     //float Ampere;
     temp = (unsigned long) regs[2] << 16 | regs[3];
-    Ampere = *(float*)temp;
+    Ampere = *(float*)&temp;
 
     //float Watt;
     temp = (unsigned long) regs[4] << 16 | regs[5];
-    Watt = *(float*)temp;
+    Watt = *(float*)&temp;
 
     // unsigned long ulWatt = temp;
 
     //float Var;
     temp = (unsigned long) regs[6] << 16 | regs[7];
-    Var = *(float*)temp;
+    Var = *(float*)&temp;
 
     //float Frequency;
     temp = (unsigned long) regs[8] << 16 | regs[9];
-    Frequency = *(float*)temp;
+    Frequency = *(float*)&temp;
 
     //float Pstkwh;
     temp = (unsigned long) regs[10] << 16 | regs[11];
-    Pstkwh = *(float*)temp;
+    Pstkwh = *(float*)&temp;
 
     //float Pstkvarh;
     temp = (unsigned long) regs[12] << 16 | regs[13];
-    Pstkvarh = *(float*)temp;
+    Pstkvarh = *(float*)&temp;
 
     //float Ngtkvarh;
     temp = (unsigned long) regs[14] << 16 | regs[15];
-    Ngtkvarh = *(float*)temp;
+    Ngtkvarh = *(float*)&temp;
 
     //float PowerFactor;
     temp = (unsigned long) regs[16] << 16 | regs[17];
-    PowerFactor = *(float*)temp;
+    PowerFactor = *(float*)&temp;
 
     //float ApparentPower;
     temp = (unsigned long) regs[18] << 16 | regs[19];
-    ApparentPower = *(float*)temp;
+    ApparentPower = *(float*)&temp;
 
     //float Unk2;
     temp = (unsigned long) regs[20] << 16 | regs[21];
-    Unk2 = *(float*)temp;
+    Unk2 = *(float*)&temp;
 
     /* Convert all floats into string prior to publish to MQTT broker */
 
