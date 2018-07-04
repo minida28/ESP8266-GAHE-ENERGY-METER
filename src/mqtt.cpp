@@ -198,7 +198,7 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   strcpy(t, topic);
 
   File configFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
-  if (!&configFile) {
+  if (!configFile) {
     DEBUGMQTT("Failed to open config file\r\n");
     return;
   }

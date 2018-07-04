@@ -39,6 +39,8 @@
 #include "FSWebServerLib.h"
 #include "gahe1progmem.h"
 
+#include "PingAlive.h"
+
 
 
 

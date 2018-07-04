@@ -1203,6 +1203,8 @@ void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *reque
   root[FPSTR(pgm_date)] = NTP.getDateStr();
   root[FPSTR(pgm_uptime)] = NTP.getUptimeString();
   root[FPSTR(pgm_lastboot)] = NTP.getTimeDateString(NTP.getLastBootTime());
+  root["ping_seq_num_send"] = ping_seq_num_send;
+  root["ping_seq_num_recv"] = ping_seq_num_recv;
   root.printTo(*response);
   request->send(response);
 }
