@@ -1,0 +1,7 @@
+{
+    "templaterequest": "%s %sfield1=%s&field2=%s&field3=%s&field4=%s&field5=%s&field6=%s&field7=%s&field8=%d&status=%s HTTP/1.1\r\nHost: %s\r\nX-THINGSPEAKAPIKEY: %s\r\n\r\n\r\n",
+    "method": "POST",
+    "url": "/update?",
+    "host": "api.thingspeak.com",
+    "apikey": "QSK88PPX9COHGEAA"
+  }

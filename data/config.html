@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <!-- Basic Page Needs
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta charset="utf-8">
+  <title>Network Config</title>
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!-- Mobile Specific Metas
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <!--<link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">-->
+
+  <!-- CSS
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="stylesheet" href="bulma.min.css">
+  <link rel="stylesheet" href="side-menu.css">
+  
+  <style>
+    body
+    {
+      font-size: 0.9em; 
+      /*line-height: 1.6;*/
+      /*font-weight: 400;*/
+      /*font-family: "Raleway", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;*/
+      color: #222;
+    }
+
+    .chart
+    {
+      /*width: 300px;*/
+      /*height: 130px;*/
+      /*max-height: 200px;*/
+      /*max-width: 420px;*/
+      /*border: 1px dotted red;*/
+      /*box-sizing: border-box;*/
+      
+      /*position: relative;*/
+      /*margin: auto;*/
+      /*height: 100px;*/
+      /*width: 100%;*/
+    }
+
+  </style>
+
+
+  <!-- Favicon
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  
+</head>
+<body>
+  
+<div id="layout">
+  <!-- Menu toggle -->
+  <a href="#menu" id="menuLink" class="menu-link">
+      <!-- Hamburger icon -->
+      <span></span>
+  </a>
+  
+  <div id="menu">
+    <div class="pure-menu">
+      <a class="pure-menu-heading" href="/">ENERGYMETER_258629</a>
+      <ul class="pure-menu-list">
+        <li class="pure-menu-item"><a class="pure-menu-link" href="test.htm">Test</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="mqtt.htm">MQTT</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="raw.htm">Raw</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="meter.htm">Meter Reading</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="chart.htm">Graphs</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="general.html">General Config</a></li>
+        <li class="pure-menu-item menu-item-divided pure-menu-selected"><a class="pure-menu-link" href="config.html">Wifi Settings</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="info.html">Network Info</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="ntp.html">NTP Settings</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="system.html">System Settings</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="async.htm">DEBUG</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="edit2.html">EDITOR</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="main">
+    <div class="header">
+        <h1>Wifi Settings</h1>
+        <!--<h2>A subtitle for your page goes here</h2>-->
+    </div>
+    
+    <section class="section">
+      
+      <div class="container">
+        
+<p>
+    To use this layout, you can just copy paste the HTML, along with the CSS in <a href="/css/layouts/side-menu.css" alt="Side Menu CSS">side-menu.css</a>, and the JavaScript in <a href="/js/ui.js">ui.js</a>. The JS file uses vanilla JavaScript to simply toggle an <code>active</code> class that makes the menu responsive.
+</p>
+
+<form id="myForm">       
+<div class="field is-horizontal">
+  <div class="field-label is-normal">
+    <label class="label">Host Name</label>
+  </div>
+  <div class="field-body">
+    <div class="field">
+      <div class="control">
+        <input class="input is-static" type="text" id="hostname">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="field is-horizontal">
+  <div class="field-label is-normal">
+    <label class="label">Wifi ssid</label>
+  </div>
+  <div class="field-body">
+    <div class="field">
+      <div class="control">
+        <input class="input" type="text" id="ssid" name="ssid">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="field is-horizontal">
+  <div class="field-label is-normal">
+    <label class="label">Wifi password</label>
+  </div>
+  <div class="field-body">
+    <div class="field">
+      <div class="control">
+        <input class="input" type="text" id="password" name="password">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="field is-horizontal">
+  <div class="field-label">
+    <label class="label">Enable DHCP</label>
+  </div>
+  <div class="field-body">
+    <div class="field">
+      <div class="control">
+        <label class="checkbox">
+          <input type="checkbox" id="dhcp" name="dhcp" onchange="something(this.value)">
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="field is-horizontal">
+  <div class="field-label is-normal">
+    <label class="label">Static IP</label>
+  </div>
+  <div class="field-body">
+    <div class="field">
+      <div class="control">
+        <input class="input" type="text" id="static_ip" name="static_ip">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="field is-horizontal">
+  <div class="field-label is-normal">
+    <label class="label">Gateway</label>
+  </div>
+  <div class="field-body">
+    <div class="field">
+      <div class="control">
+        <input class="input" type="text" id="gateway" name="gateway">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="field is-horizontal">
+  <div class="field-label is-normal">
+    <label class="label">Netmask</label>
+  </div>
+  <div class="field-body">
+    <div class="field">
+      <div class="control">
+        <input class="input" type="text" id="netmask" name="netmask">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="field is-horizontal">
+  <div class="field-label is-normal">
+    <label class="label">DNS 0</label>
+  </div>
+  <div class="field-body">
+    <div class="field">
+      <div class="control">
+        <input class="input" type="text" id="dns0" name="dns0">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="field is-horizontal">
+  <div class="field-label">
+    <label class="label">DNS 2</label>
+  </div>
+  <div class="field-body">
+    <div class="field">
+      <div class="control">
+        <input class="input" type="text" id="dns1" name="dns1">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="field is-horizontal">
+  <div class="field-label">
+    <label class="label"></label>
+  </div>
+  <div class="field-body">
+    <div class="field">
+      <div class="control">
+        <input class="button" type="submit" value="Save settings">
+      </div>
+    </div>
+  </div>
+</div>
+
+
+</form>
+
+    <hr>
+    <strong>SCAN WIFI</strong>
+    <br>
+    <span id="numNets">Scanning for wifi...</span>
+    <br>
+    
+    <table class="table is-hoverable is-fullwidth">
+      <thead>
+        <tr>
+          <th>SSID</th>
+          <th>Channel</th>
+          <th>Secure</th>
+          <th>RSSI</th>
+        </tr>
+      </thead>
+      <tbody id="networks"></tbody>
+      <tr>
+        <td colspan="4" align="center">
+          <button class="pure-button pure-button-primary" onclick="getNetwork();">Refresh</button>
+        </td>
+      </tr>
+    </table>
+        
+      </div>
+      
+    </section>
+
+
+  </div>
+</div>
+
+
+  
+  <!-- Javascript section
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<script src="ui.js"></script>
+<script language="javascript" type="text/javascript">
+
+var ws = null;
+
+window.onload = function () {
+  getConfigValues("config/network");
+  startSocket();
+  //startEvents();
+  setTimeout(getNetwork, 2000);
+}
+
+window.addEventListener("load", function () {
+  function sendData() {
+    var XHR = new XMLHttpRequest();
+
+    // Bind the FormData object and the form element
+    var FD = new FormData(form);
+
+    // Define what happens on successful data submission
+    XHR.addEventListener("load", function(event) {
+      alert(event.target.responseText);
+    });
+
+    // Define what happens in case of error
+    XHR.addEventListener("error", function(event) {
+      alert('Oops! Something went wrong.');
+    });
+
+    // Set up our request
+    XHR.open("POST", window.location.pathname);
+
+    // The data sent is what the user provided in the form
+    XHR.send(FD);
+  }
+ 
+  // Access the form element...
+  var form = document.getElementById("myForm");
+
+  // ...and take over its submit event.
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    sendData();
+  });
+});
+
+function startSocket(){
+  ws = new WebSocket('ws://'+document.location.host+'/ws',['arduino']);
+  ws.binaryType = "arraybuffer";
+  ws.onopen = function(e){
+		var obj = new Object();
+    obj.url = window.location.pathname;
+    var myJSON = JSON.stringify(obj);
+    ws.send(myJSON);
+  };
+  ws.onclose = function(e){
+  };
+  ws.onerror = function(e){
+    console.log("ws error", e);
+  };
+  ws.onmessage = function(e){
+    var msg = "";
+    if(e.data instanceof ArrayBuffer){
+      msg = "BIN:";
+      var bytes = new Uint8Array(e.data);
+      for (var i = 0; i < bytes.length; i++) {
+        msg += String.fromCharCode(bytes[i]);
+      }
+    } else {
+      msg = "TXT:"+e.data;
+      console.log(msg);
+      if (isJSON(e.data)) {
+        var json = JSON.parse(e.data);
+      }
+    }
+  };
+}
+// https://stackoverflow.com/questions/3710204/how-to-check-if-a-string-is-a-valid-json-string-in-javascript-without-using-try
+function isJSON(str) {
+  try {
+      return (JSON.parse(str) && !!str);
+  } catch (e) {
+      return false;
+  }
+}
+function securityStr(security) {
+  if (security == 7) {
+    return 'Open';
+  }
+  else if (security == 5) {
+    return 'WEP';
+  }
+  else if (security == 2) {
+    return 'WPA';
+  }
+  else if (security == 4) {
+    return 'WPA2';
+  }
+  else if (security == 8) {
+    return 'WPA/WPA2';
+  }
+}
+function wifiScan(res) {
+  var array;
+  if (!res || (res.target.responseText == '[]')) {
+    setTimeout(function () { getNetwork(); }, 5000);
+    return;
+  }
+  array = JSON.parse(res.target.responseText);
+  array.sort(function (a, b) { return a.rssi - b.rssi });
+  array.reverse();
+  document.getElementById("numNets").innerHTML = array.length + " networks found";
+  var table = document.getElementById("networks");
+  table.innerHTML = "";
+  for (var i = 0; i < array.length; i++) {
+    var row = document.createElement("tr");
+    row.innerHTML = "<td><a href='javascript:selssid(\"" + array[i].ssid + "\")'>" + array[i].ssid + "</td><td>" + array[i].channel + "</td><td>" + securityStr(array[i].secure) + "</td><td>" + array[i].rssi + "</td>";
+    table.appendChild(row);
+  }
+}
+function getNetwork() {
+  request = new XMLHttpRequest();
+  if (request) {
+    request.open("GET", "/scan", true);
+    request.addEventListener("load", wifiScan)
+    request.send();
+  }
+}
+function selssid(value) {
+  document.getElementById("ssid").value = value;
+}
+function getConfigValues(address) {
+  var req = new XMLHttpRequest();
+  if (req) {
+    req.open("GET", address, true);
+    req.addEventListener("load", reqListener);
+    req.send();
+  }
+}
+
+function reqListener () {
+  //console.log(this.responseText);
+  let json = JSON.parse(this.responseText);
+  console.log(json);
+  document.getElementById("hostname").value = json.hostname;
+  document.getElementById("ssid").value = json.ssid;
+  document.getElementById("password").value = json.password;
+  document.getElementById("dhcp").checked = json.dhcp;
+  document.getElementById("static_ip").value = json.static_ip;
+  document.getElementById("gateway").value = json.gateway;
+  document.getElementById("netmask").value = json.netmask;
+  document.getElementById("dns0").value = json.dns0;
+  document.getElementById("dns1").value = json.dns1;
+  
+  something();
+}
+function something() {
+  var dhcpVal = document.getElementById('dhcp').checked;
+  console.log(dhcpVal);
+  if (dhcpVal) {
+    document.getElementById('static_ip').disabled = true;
+    document.getElementById('netmask').disabled = true;
+    document.getElementById('gateway').disabled = true;
+    document.getElementById('dns0').disabled = true;
+    document.getElementById('dns1').disabled = true;
+    
+    document.getElementById('static_ip').style.color = "#999999";
+    document.getElementById('netmask').style.color = "#999999";
+    document.getElementById('gateway').style.color = "#999999";
+    document.getElementById('dns0').style.color = "#999999";
+    document.getElementById('dns1').style.color = "#999999";
+  } else {
+    document.getElementById('static_ip').disabled = false;
+    document.getElementById('netmask').disabled = false;
+    document.getElementById('gateway').disabled = false;
+    document.getElementById('dns0').disabled = false;
+    document.getElementById('dns1').disabled = false;
+    
+    document.getElementById('static_ip').style.color = "inherit";
+    document.getElementById('netmask').style.color = "inherit";
+    document.getElementById('gateway').style.color = "inherit";
+    document.getElementById('dns0').style.color = "inherit";
+    document.getElementById('dns1').style.color = "inherit";
+  }
+}
+function sendConfig(element) {
+  let json = new Object();
+  json.saveconfig = window.location.pathname;
+  json.ssid = document.getElementById("ssid").value;
+  json.password = document.getElementById("password").value;
+  json.dhcp = document.getElementById("dhcp").checked;
+  json.static_ip = document.getElementById("static_ip").value;
+  json.netmask = document.getElementById("netmask").value;
+  json.gateway = document.getElementById("gateway").value;
+  json.dns0 = document.getElementById("dns0").value;
+  json.dns1 = document.getElementById("dns1").value;
+  var myJSON = JSON.stringify(json);
+  ws.send(myJSON);
+  console.log("Data sent: ",myJSON);
+}
+</script>
+
+<!-- End Document
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+</body>
+</html>

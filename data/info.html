@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <!-- Basic Page Needs
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta charset="utf-8">
+  <title>Status</title>
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!-- Mobile Specific Metas
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <!--<link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">-->
+
+  <!-- CSS
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="stylesheet" href="pure-min.css">
+  <link rel="stylesheet" href="side-menu.css">
+  <!--<link rel="stylesheet" href="normalize.css">-->
+  <!--<link rel="stylesheet" href="skeleton.css">-->
+  <!--<link rel="stylesheet" href="side-menu.css">-->
+
+
+  <!-- Favicon
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  
+</head>
+<body>
+  
+<div id="layout">
+  <!-- Menu toggle -->
+  <a href="#menu" id="menuLink" class="menu-link">
+      <!-- Hamburger icon -->
+      <span></span>
+  </a>
+  
+  <div id="menu">
+    <div class="pure-menu">
+      <a class="pure-menu-heading" href="/">ENERGYMETER_258629</a>
+      <ul class="pure-menu-list">
+        <li class="pure-menu-item"><a class="pure-menu-link" href="test.htm">Test</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="mqtt.htm">MQTT</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="raw.htm">Raw</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="meter.htm">Meter Reading</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="chart.htm">Graphs</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="general.html">General Config</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="config.html">Wifi Settings</a></li>
+        <li class="pure-menu-item menu-item-divided pure-menu-selected"><a class="pure-menu-link" href="info.html">Network Info</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="ntp.html">NTP Settings</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="system.html">System Settings</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="async.htm">DEBUG</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="edit2.html">EDITOR</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="main">
+    <div class="header">
+        <h1>Status</h1>
+        <!--<h2>A subtitle for your page goes here</h2>-->
+    </div>
+
+    <div class="content">
+      <h2 class="content-subhead">How to use this layout</h2>
+      <p>
+          To use this layout, you can just copy paste the HTML, along with the CSS in <a href="/css/layouts/side-menu.css" alt="Side Menu CSS">side-menu.css</a>, and the JavaScript in <a href="/js/ui.js">ui.js</a>. The JS file uses vanilla JavaScript to simply toggle an <code>active</code> class that makes the menu responsive.
+      </p>
+      
+      <div class="pure-form pure-g">
+
+        <div class="pure-u-1-2"><span class="pure-input-1">Chip Id</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="chipid"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Host name</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="hostname"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Mode</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="mode"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">SSID</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="ssid"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Station IP</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="sta_ip"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Station MAC</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="sta_mac"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Access Point IP</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="ap_ip"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Access Point MAC</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="ap_mac"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Netmask</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="netmask"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Gateway</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="gateway"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">DNS</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="dns"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Last Sync</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="lastsync"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Time</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="time"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Date</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="date"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Uptime</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="uptime"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Last boot</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="lastboot"></span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+  
+  <!-- Javascript section
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<script src="ui.js"></script>
+<script language="javascript" type="text/javascript">
+
+var ws = null;
+
+window.onload = function ()
+{
+  sendHttpRequest("admin/infovalues");
+  setInterval('sendHttpRequest("admin/infovalues")', 1000);
+  // startSocket();
+  //startEvents();
+}
+
+function sendHttpRequest(url) {
+  var req = new XMLHttpRequest();
+  if (req) {
+    req.open("GET", url, true);
+    req.addEventListener("load", reqListener);
+    req.send();
+  }
+}
+
+function reqListener ()
+{
+  //console.log(this.responseText);
+  let json = JSON.parse(this.responseText);
+  console.log(json);
+  document.getElementById("chipid").textContent = json.chipid;
+  document.getElementById("hostname").textContent = json.hostname;
+  document.getElementById("mode").textContent = json.mode;
+  document.getElementById("ssid").textContent = json.ssid;
+  document.getElementById("sta_ip").textContent = json.sta_ip;
+  document.getElementById("sta_mac").textContent = json.sta_mac;
+  document.getElementById("ap_ip").textContent = json.ap_ip;
+  document.getElementById("ap_mac").textContent = json.ap_mac;
+  document.getElementById("netmask").textContent = json.netmask;
+  document.getElementById("gateway").textContent = json.gateway;
+  document.getElementById("dns").textContent = json.dns;
+  document.getElementById("lastsync").textContent = json.lastsync;
+  document.getElementById("time").textContent = json.time;
+  document.getElementById("date").textContent = json.date;
+  document.getElementById("uptime").textContent = json.uptime;
+  document.getElementById("lastboot").textContent = json.lastboot;
+}
+
+</script>
+
+<!-- End Document
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+</body>
+</html>

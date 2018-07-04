@@ -1,0 +1,8 @@
+{
+    "templaterequest": "%s %snode=%s&apikey=%s&fulljson=%s HTTP/1.1\r\nHost: %s\r\n\r\n\r\n",
+    "method": "GET",
+    "url": "/input/post?",
+    "node": "ESP13579541",
+    "apikey": "949d5fe857ce30d94969da9f03fba1c1",
+    "host": "emoncms.org"
+}

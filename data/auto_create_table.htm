@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--<meta name="viewport" content="width=device-width, user-scalable=no">-->
+    <title>Meter Reading</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- <script src="microajax.js"></script> -->
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        .chart {
+            width: 300px;
+            height: 100px;
+            /*border: 1px solid blue;*/
+            box-sizing: border-box;
+        }
+
+        .div2 {
+            width: 320px;
+            /*height: 100px;*/
+            /*padding: 50px;*/
+            border: 1px solid red;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="page">
+        <div class="div2">
+            <a href="admin.html" class="btn btn--s">&lt;</a>&nbsp;&nbsp;<strong>Meter Reading</strong>
+            <hr>
+            <div style="overflow-x:auto;">
+                <!--<table class="w2-striped" border="0" cellspacing="0" cellpadding="3" style="width:310px">-->
+                <table>
+                    <tr>
+                        <td align="right">Voltage</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_voltage"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">Ampere</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_ampere"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">Watt</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_watt"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">VAr</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_var"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">Apparent</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_apparentpower"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">PF</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_powerfactor"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">Frequency</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_frequency"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">Pst kWh</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_pstkwh"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">Pst kVArh</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_pstkvarh"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">Ngt kVArh</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_ngtkvarh"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">Threshold</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_wattthreshold"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right">Request</td>
+                        <td>:</td>
+                        <td>
+                            <span id="x_packetssage;
+
+                    // voltage = xmlResponse.getElementsByTagName('Voltage')[0].childNodes[0].nodeValue;
+                    // document.getElementById('x_voltage').innerHTML = voltage;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('Ampere');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_ampere').innerHTML = message;
+
+                    // watt = xmlResponse.getElementsByTagName('Watt')[0].childNodes[0].nodeValue;
+                    // document.getElementById('x_watt').innerHTML = watt;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('Var');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_var').innerHTML = message;
+
+
+                    // xmldoc = xmlResponse.getElementsByTagName('ApparentPower');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_apparentpower').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('PowerFactor');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_powerfactor').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('Frequency');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_frequency').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('Pstkwh');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_pstkwh').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('Pstkvarh');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_pstkvarh').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('Ngtkvarh');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_ngtkvarh').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('wattThreshold');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_wattthreshold').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('PACKET3_requests');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_PACKET3_requests').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('PACKET3_successful_requests');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_PACKET3_successful_requests').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('PACKET3_failed_requests');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_PACKET3_failed_requests').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('PACKET3_exception_errors');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_PACKET3_exception_errors').innerHTML = message;
+
+                    // xmldoc = xmlResponse.getElementsByTagName('PACKET3_connection');
+                    // message = xmldoc[0].firstChild.nodeValue;
+                    // document.getElementById('x_PACKET3_connection').innerHTML = message;
+
+
+                    // heap = xmlResponse.getElementsByTagName('heap')[0].childNodes[0].nodeValue;
+                    // document.getElementById('x_heap').innerHTML = heap;
+
+
+                    //value = jsonMeterReading.Watt;
+                    //voltage = jsonMeterReading.Voltage;
+                    //label = jsonMeterReading.PACKET3_requests;
+                    //console.log(value);
+                    //myLiveChart.addData([Math.random() * 100, Math.random() * 100], ++latestLabel);
+                    //myLiveChart.addData([jsonMeterReading.Watt], ++latestLabel);
+                    // Remove the first point so we dont just add values forever
+                    //canvas.push(jsonMeterReading.Watt);
+                    //canvas.removeData();
+                    //canvas.update();
+                    if (trigger) {
+                        trigger = !trigger;
+                        setTimeout(function() {
+                            requestAnimationFrame(advance);
+                        }, speed);
+                    }
+
+                }
+            }
+            
+            
+            function insertParameter(node_name){
+              
+              // create object from child nodes
+              var children = xmlResponse.getElementsByTagName(node_name)[0].childNodes;
+              
+              // looping the child nodes in xml
+              for(var i = 0; i < children.length; i++){
+                var x = children[i].nodeName;
+                x = "x_" + x;
+                var y = children[i].textContent;
+                document.getElementById(x).innerHTML = y;
+              }
+            }
+            
+            var tbl  = document.createElement('table');
+            function constructTable(node_name){
+              
+              // check if xmlTable exist in the page
+              // then remove if exist
+              var check = document.getElementById("xmlTable").contains(tbl);
+              if (check) {
+                document.getElementById("xmlTable").removeChild(tbl);
+                //console.log("true");
+              }
+              
+              // create object from child nodes
+              var children = xmlResponse.getElementsByTagName(node_name)[0].childNodes;
+              
+              // create table element
+              tbl  = document.createElement('table');
+
+              // looping the child nodes in xml
+              for(var i = 0; i < children.length; i++){
+                
+                var tr = tbl.insertRow();
+                var td;
+                var x = children[i].getAttribute("name");
+                var y = children[i].textContent;
+  
+                for(var j = 0; j < 3; j++){
+                  td = tr.insertCell(j);
+                  // td.style.border = '1px solid black';
+                  if (j==0){
+                    td.appendChild(document.createTextNode(x));
+                  } 
+                  else if (j==1){
+                    td.appendChild(document.createTextNode(":"));
+                  }
+                  else {
+                    td.appendChild(document.createTextNode(y));
+                  }
+                }
+              }
+ 
+              // insert border line
+              tr = tbl.insertRow();
+              td = tr.insertCell();
+              var hr = document.createElement('hr');
+              td.appendChild(hr);
+              td.setAttribute('colSpan', '3');
+
+              // insert table to page
+              document.getElementById("xmlTable").appendChild(tbl);              
+            }
+
+
+
+            var samples = 60;
+            var speed = 650;
+
+            var datWatt = [];
+            var datVoltage = [];
+            var datHeap = [];
+            var labels = [];
+
+            var charts = [];
+
+            var watt = 0;
+            var voltage = 0;
+            var heap = 0;
+
+            datWatt.length = samples;
+            datVoltage.length = samples;
+            datHeap.length = samples;
+            labels.length = samples;
+
+            //values.fill(0);
+            //voltages.fill(0);
+            //labels.fill(0);
+
+
+
+            function initialize() {
+                Chart.defaults.global.maintainAspectRatio = false;
+                Chart.defaults.global.responsive = true;
+
+                charts.push(new Chart(document.getElementById("chart0"), {
+                    //type: 'line',
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: datWatt,
+                            backgroundColor: "rgba(151,187,205,0.2)",
+                            borderColor: "rgba(151,187,205,1)",
+                            borderWidth: 2,
+                            lineTension: 0.25,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        //responsive: true,
+                        //maintainAspectRatio: false,
+                        animation: {
+                            duration: speed * 1.5,
+                            easing: 'linear'
+                        },
+                        legend: true,
+                        scales: {
+                            xAxes: [{
+                                display: false
+                            }],
+                            // yAxes: [{
+                            //     ticks: {
+                            //         max: 1,
+                            //         min: -1
+                            //     }
+                            // }]
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero: false,
+                                    userCallback: function(label, index, labels) {
+                                        // when the floored value is the same as the value we have a whole number
+                                        return Number(label).toFixed(1);
+                                    },
+                                }
+                            }],
+                        }
+                    }
+                }), new Chart(document.getElementById("chart1"), {
+                    //type: 'bar',
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: datVoltage,
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            borderWidth: 2,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        //responsive: true,
+                        animation: {
+                            duration: speed * 1.5,
+                            easing: 'linear'
+                        },
+                        legend: false,
+                        scales: {
+                            xAxes: [{
+                                display: false
+                            }],
+                            // yAxes: [{
+                            //     ticks: {
+                            //         max: 1,
+                            //         min: -1
+                            //     }
+                            // }]
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero: false,
+                                    userCallback: function(label, index, labels) {
+                                        // when the floored value is the same as the value we have a whole number
+                                        // if (Math.floor(label) === label) {
+                                        //     return label;
+                                        // }
+                                        // if (Number(label).toFixed(1) === label) {
+                                        //     return label;
+                                        // }
+                                        //Number(label).toFixed(1);
+                                        return Number(label).toFixed(1);
+                                        // return label / 1000 + 'k';
+                                    },
+                                    // scaleLabel: {
+                                    //     display: true,
+                                    //     labelString: '1k = 1000'
+                                    // },
+                                }
+                            }],
+                        }
+                    }
+                }), new Chart(document.getElementById("chart-heap"), {
+                    //type: 'bar',
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: datHeap,
+                            backgroundColor: 'rgba(237, 226, 43, 0.1)',
+                            borderColor: 'rgb(237, 226, 43)',
+                            borderWidth: 2,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        //responsive: true,
+                        animation: {
+                            duration: speed * 1.5,
+                            easing: 'linear'
+                        },
+                        legend: false,
+                        scales: {
+                            xAxes: [{
+                                display: false
+                            }],
+                            // yAxes: [{
+                            //     ticks: {
+                            //         max: 1,
+                            //         min: -1
+                            //     }
+                            // }]
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero: false,
+                                    userCallback: function(label, index, labels) {
+                                        // when the floored value is the same as the value we have a whole number
+                                        // if (Math.floor(label) === label) {
+                                        //     return label;
+                                        // }
+                                        // if (Number(label).toFixed(1) === label) {
+                                        //     return label;
+                                        // }
+                                        //Number(label).toFixed(1);
+                                        return Number(label).toFixed(0);
+                                        // return label / 1000 + 'k';
+                                    },
+                                    // scaleLabel: {
+                                    //     display: true,
+                                    //     labelString: '1k = 1000'
+                                    // },
+                                }
+                            }],
+                        }
+                    }
+                }));
+            }
+
+            function advance() {
+
+                // if (evtSource.readystate) {
+                //     values.push(value);
+                //     values.shift();
+                //     voltages.push(voltage);
+                //     voltages.shift();
+                //     charts.forEach(function(chart) {
+                //         chart.update();
+                //     });
+
+                //     setTimeout(function() {
+                //         requestAnimationFrame(advance);
+                //     }, speed);
+                // }
+                datWatt.push(watt);
+                datWatt.shift();
+                datVoltage.push(voltage);
+                datVoltage.shift();
+                datHeap.push(heap);
+                datHeap.shift();
+                //labels.push(label);
+                charts.forEach(function(chart) {
+                    chart.update();
+                });
+
+                setTimeout(function() {
+                    requestAnimationFrame(advance);
+                }, speed);
+            }
+
+            window.onload = function() {
+                process();
+                initialize();
+                //advance();
+            };
+
+            // Reduce the animation steps for demo clarity.
+            // var myLiveChart = new Chart(ctx).Line(startingData, {
+            //     animationSteps: 5
+            // });
+
+
+            // setInterval(function(){
+            //   // Add two random numbers for each dataset
+            //   myLiveChart.addData([Math.random() * 100, Math.random() * 100], ++latestLabel);
+            //   // Remove the first point so we dont just add values forever
+            //   myLiveChart.removeData();
+            // }, 5000);
+        </script>
+    </div>
+</body>
+
+</html>

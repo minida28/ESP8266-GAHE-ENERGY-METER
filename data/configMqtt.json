@@ -1,0 +1,10 @@
+{
+  "mqtt_server": "192.168.10.3",
+  "mqtt_port": 1883,
+  "mqtt_user": "test",
+  "mqtt_pass": "test",
+  "mqtt_clientid": "kwh1",
+  "mqtt_keepalive": 5,
+  "mqtt_cleansession": true,
+  "mqtt_lwt": ["kwh1/mqttstatus",2,true,"DISCONNECTED"]
+}

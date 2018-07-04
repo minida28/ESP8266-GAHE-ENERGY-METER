@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <!-- Basic Page Needs
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta charset="utf-8">
+  <title>Network Config</title>
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!-- Mobile Specific Metas
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <!--<link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">-->
+
+  <!-- CSS
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="stylesheet" href="pure-min.css">
+  <link rel="stylesheet" href="side-menu.css">
+  <!--<link rel="stylesheet" href="normalize.css">-->
+  <!--<link rel="stylesheet" href="skeleton.css">-->
+  <!--<link rel="stylesheet" href="side-menu.css">-->
+
+
+  <!-- Favicon
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  
+</head>
+<body>
+  
+<div id="layout">
+  <!-- Menu toggle -->
+  <a href="#menu" id="menuLink" class="menu-link">
+      <!-- Hamburger icon -->
+      <span></span>
+  </a>
+  
+  <div id="menu">
+    <div class="pure-menu">
+      <a class="pure-menu-heading" href="/">ENERGYMETER_258629</a>
+      <ul class="pure-menu-list">
+        <li class="pure-menu-item"><a class="pure-menu-link" href="test.htm">Test</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="mqtt.htm">MQTT</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="raw.htm">Raw</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="meter.htm">Meter Reading</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="chart.htm">Graphs</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="general.html">General Config</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="config.html">Wifi Settings</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="info.html">Network Info</a></li>
+        <li class="pure-menu-item menu-item-divided pure-menu-selected"><a class="pure-menu-link" href="ntp.html">NTP Settings</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="system.html">System Settings</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="async.htm">DEBUG</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="edit2.html">EDITOR</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="main">
+    <div class="header">
+        <h1>Wifi Settings</h1>
+        <!--<h2>A subtitle for your page goes here</h2>-->
+    </div>
+
+    <div class="content">
+      <h2 class="content-subhead">How to use this layout</h2>
+      <p>
+          To use this layout, you can just copy paste the HTML, along with the CSS in <a href="/css/layouts/side-menu.css" alt="Side Menu CSS">side-menu.css</a>, and the JavaScript in <a href="/js/ui.js">ui.js</a>. The JS file uses vanilla JavaScript to simply toggle an <code>active</code> class that makes the menu responsive.
+      </p>
+
+      
+    <form id="myForm" class="pure-form pure-form-aligned">
+      <fieldset>
+        <div class="pure-control-group">
+          <label for="hostname">Time Zone</label>
+					<select  id="timezone" name="timezone">
+						<option value="-120">(GMT-12:00)</option>
+						<option value="-110">(GMT-11:00)</option>
+						<option value="-100">(GMT-10:00)</option>
+						<option value="-90">(GMT-09:00)</option>
+						<option value="-80">(GMT-08:00)</option>
+						<option value="-70">(GMT-07:00)</option>
+						<option value="-60">(GMT-06:00)</option>
+						<option value="-50">(GMT-05:00)</option>
+						<option value="-40">(GMT-04:00)</option>
+						<option value="-35">(GMT-03:30)</option>
+						<option value="-30">(GMT-03:00)</option>
+						<option value="-20">(GMT-02:00)</option>
+						<option value="-10">(GMT-01:00)</option>
+						<option value="0">(GMT+00:00)</option>
+						<option value="10">(GMT+01:00)</option>
+						<option value="20">(GMT+02:00)</option>
+						<option value="30">(GMT+03:00)</option>
+						<option value="35">(GMT+03:30)</option>
+						<option value="40">(GMT+04:00)</option>
+						<option value="45">(GMT+04:30)</option>
+						<option value="50">(GMT+05:00)</option>
+						<option value="55">(GMT+05:30)</option>
+						<option value="57">(GMT+05:45)</option>
+						<option value="60">(GMT+06:00)</option>
+						<option value="65">(GMT+06:30)</option>
+						<option value="70">(GMT+07:00)</option>
+						<option value="80">(GMT+08:00)</option>
+						<option value="90">(GMT+09:00)</option>
+						<option value="95">(GMT+09:30)</option>
+						<option value="100">(GMT+10:00)</option>
+						<option value="110">(GMT+11:00)</option>
+						<option value="120">(GMT+12:00)</option>
+						<option value="120">(GMT+12:00)</option>
+						<option value="130">(GMT+13:00)</option>
+					</select>
+        </div>
+        
+        <div class="pure-controls">
+          <label for="dst" class="pure-checkbox">
+            <input id="dst" name="dst" type="checkbox" onchange="something(this.value)"> DST
+          </label>
+        </div>
+        
+        <div class="pure-controls">
+          <label for="enablertc" class="pure-checkbox">
+            <input id="enablertc" name="enablertc" type="checkbox"> RTC Enabled
+          </label>
+        </div>
+        
+        <div class="pure-control-group">
+          <label for="ssid">Sync interval</label>
+          <input type="text" id="syncinterval" name="syncinterval">
+        </div>
+        
+        <div class="pure-controls">
+          <label for="enablentp" class="pure-checkbox">
+            <input id="enablentp" name="enablentp" type="checkbox" onchange="something(this.value)"> NTP Enabled
+          </label>
+        </div>
+        
+        <div class="pure-control-group">
+          <label for="ssid">NTP Server 0</label>
+          <input type="text" id="ntpserver_0" name="ntpserver_0">
+        </div>
+    
+        <div class="pure-control-group">
+          <label for="ssid">NTP Server 1</label>
+          <input type="text" id="ntpserver_1" name="ntpserver_1">
+        </div>
+        
+        <div class="pure-control-group">
+          <label for="ssid">NTP Server 2</label>
+          <input type="text" id="ntpserver_2" name="ntpserver_2">
+        </div>
+        
+        <div class="pure-controls">
+          <button type="submit" class="pure-button pure-button-primary">Submit</button>
+        </div>
+    
+      </fieldset>
+    </form>
+
+    </div>
+  </div>
+</div>
+
+
+  
+  <!-- Javascript section
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<script src="ui.js"></script>
+<script language="javascript" type="text/javascript">
+
+var ws = null;
+
+window.onload = function () {
+  sendHttpRequest("/admin/ntpvalues");
+}
+
+function sendHttpRequest(url)
+{
+  var req = new XMLHttpRequest();
+  if (req) {
+    req.open("GET", url, true);
+    req.addEventListener("load", reqListener);
+    req.send();
+  }
+}
+
+function reqListener ()
+{
+  //console.log(this.responseText);
+  let json = JSON.parse(this.responseText);
+  console.log(json);
+  document.getElementById("timezone").value = json.timezone;
+  document.getElementById("dst").checked = json.dst;
+  document.getElementById("enablertc").checked = json.enablertc;
+  document.getElementById("syncinterval").value = json.syncinterval;
+  document.getElementById("enablentp").checked = json.enablentp;
+  document.getElementById("ntpserver_0").value = json.ntpserver_0;
+  document.getElementById("ntpserver_1").value = json.ntpserver_1;
+  document.getElementById("ntpserver_2").value = json.ntpserver_2;
+  
+
+  something();
+}
+
+function something() {
+  
+  document.getElementById("enablertc").disabled = true;
+  
+  var enableNTPVal = document.getElementById('enablentp').checked;
+  console.log(enableNTPVal);
+  if (enableNTPVal)
+  {
+    document.getElementById('ntpserver_0').disabled = false;
+    document.getElementById('ntpserver_1').disabled = false;
+    document.getElementById('ntpserver_2').disabled = false;
+
+    document.getElementById('ntpserver_0').style.color = "inherit";
+    document.getElementById('ntpserver_1').style.color = "inherit";
+    document.getElementById('ntpserver_2').style.color = "inherit";
+  }
+  else
+  {
+    document.getElementById('ntpserver_0').disabled = true;
+    document.getElementById('ntpserver_1').disabled = true;
+    document.getElementById('ntpserver_2').disabled = true;
+
+    document.getElementById('ntpserver_0').style.color = "#999999";
+    document.getElementById('ntpserver_1').style.color = "#999999";
+    document.getElementById('ntpserver_2').style.color = "#999999";
+  }
+}
+
+window.addEventListener("load", function () {
+  function sendData() {
+    var XHR = new XMLHttpRequest();
+
+    // Bind the FormData object and the form element
+    var FD = new FormData(form);
+
+    // Define what happens on successful data submission
+    XHR.addEventListener("load", function(event) {
+      alert(event.target.responseText);
+    });
+
+    // Define what happens in case of error
+    XHR.addEventListener("error", function(event) {
+      alert('Oops! Something went wrong.');
+    });
+
+    // Set up our request
+    XHR.open("POST", window.location.pathname);
+
+    // The data sent is what the user provided in the form
+    XHR.send(FD);
+  }
+ 
+  // Access the form element...
+  var form = document.getElementById("myForm");
+
+  // ...and take over its submit event.
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    sendData();
+  });
+});
+
+// https://stackoverflow.com/questions/3710204/how-to-check-if-a-string-is-a-valid-json-string-in-javascript-without-using-try
+function isJSON(str) {
+  try {
+      return (JSON.parse(str) && !!str);
+  } catch (e) {
+      return false;
+  }
+}
+
+</script>
+
+<!-- End Document
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+</body>
+</html>

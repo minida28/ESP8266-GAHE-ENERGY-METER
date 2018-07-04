@@ -1,0 +1,235 @@
+<!DOCTYPE HTML>
+<head>
+<title>GAHE GHDS100E MODBUS RTU</title>
+<META name='viewport' content='width=device-width, initial-scale=1'>
+<META charset='UTF-8'>
+<style>
+@import url(http://fonts.googleapis.com/css?family=Open+Sans:300,400,700);
+body { font-family: 'Open Sans', sans-serif; font-weight: 300; line-height: 1.42em; color:#A7A1AE; background-color:#1F2739;}
+h1 { font-size:2em; font-weight: 300; line-height:1em; text-align: center; color: #4DC3FA;}
+h2 { font-size:1em; font-weight: 300; text-align: center; display: block; line-height:1em; padding-bottom: 0em; color: #FB667A;}
+h2 a { font-weight: 700; text-transform: uppercase; color: #FB667A; text-decoration: none;}
+.blue { color: #185875; }
+.yellow { color: #FFF842; }
+.note { color: #A7A1AE; font-size: 0.9em; }
+.container th h1 { font-weight: bold; font-size: 1em; text-align: left; color: #185875;}
+.container td { font-weight: normal; font-size: 1em; -webkit-box-shadow: 0 2px 2px -2px #0E1119; -moz-box-shadow: 0 2px 2px -2px #0E1119; box-shadow: 0 2px 2px -2px #0E1119;}
+.container { text-align: left; overflow: hidden; width: 90%; margin: 0 auto; display: table; padding: 0 0 8em 0;}
+.container td, .container th { padding-bottom: 2%; padding-top: 2%; padding-left: 2%; }
+  /* Background-color of the odd rows */
+.container tr:nth-child(odd) { background-color: #323C50;}
+  /* Background-color of the even rows */
+.container tr:nth-child(even) { background-color: #2C3446;}
+.container th { background-color: #1F2739;}
+.container td:first-child { color: #FB667A; }
+.container td:nth-child(2) { color: #FFF842; }
+.container tr:hover { background-color: #464A52; -webkit-box-shadow: 0 6px 6px -6px #0E1119; -moz-box-shadow: 0 6px 6px -6px #0E1119; box-shadow: 0 6px 6px -6px #0E1119;}
+.container td:hover { background-color: #FFF842; color: #403E10; font-weight: bold; box-shadow: #7F7C21 -1px 1px, #7F7C21 -2px 2px, #7F7C21 -3px 3px, #7F7C21 -4px 4px, #7F7C21 -5px 5px, #7F7C21 -6px 6px; transform: translate3d(6px, -6px, 0); transition-delay: 0s; transition-duration: 0.4s; transition-property: all; transition-timing-function: line;}
+  //webSite += "@media (max-width: 800px) { .container td:nth-child(4), .container th:nth-child(4) { display: none; }}
+@media only screen and (max-width: 480px), only screen and (max-device-width: 480px) {  }
+</style>
+</head>
+<BODY onload = 'process()'>
+<h1><span class='yellow'>GAHE GHDS100E</span> <span class='blue'>MODBUS RTU</span></h1>
+<h2>Runtime = <A id='runtime'></A></h2>
+<h2>IP Address = <A id='IP_Address'></A></h2>
+<table class='container'>
+<thead>
+<tr>
+<th><h1>Parameter</h1></th>
+<th><h1>Value</h1></th>
+<th><h1>Unit</h1></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Voltage</td>
+<td><a id='Voltage'></a></td>
+<td>Volt</td>
+</tr>
+<tr>
+<td>Current</td>
+<td><a id='Ampere'></a></td>
+<td>Ampere</td>
+</tr>
+<tr>
+<td>True Power <span class='note'>(Pos)</span></td>
+<td><a id='Watt'></a></td>
+<td>Watt</td>
+</tr>
+<tr>
+<td>Reactive Power <span class='note'></span></td>
+<td><a id='Var'></a></td>
+<td>VAr</td>
+</tr>
+<tr>
+<td>Apparent Power <span class='note'></span></td>
+<td><a id='ApparentPower'></a></td>
+<td>VA</td>
+</tr>
+<tr>
+<td>Power Factor</td>
+<td><a id='PowerFactor'></a></td>
+<td>PF</td>
+</tr>
+<tr>
+<td>Line Frequency</td>
+<td><a id='Frequency'></a></td>
+<td>Hz</td>
+</tr>
+<tr>
+<td>True Power <span class='note'>(Pos, acc)</span></td>
+<td><a id='Pstkwh'></a></td>
+<td>kWh</td>
+</tr>
+<tr>
+<td>Reactive Power <span class='note'>(Pos, acc)</span></td>
+<td><a id='Pstkvarh'></a></td>
+<td>kVArh</td>
+</tr>
+<tr>
+<td>Reactive Power <span class='note'>(Neg, acc)</span></td>
+<td><a id='Ngtkvarh'></a></td>
+<td>kVArh</td>
+</tr>
+<tr>
+<td>Power threshold set to</td>
+<td><a id='wattThreshold'></a></td>
+<td>Watt</td>
+</tr>
+
+<tr>
+<td>PACKET3_ Requests</td>
+<td><a id='PACKET3_requests'></a></td>
+<td></td>
+</tr>
+
+<tr>
+<td>PACKET3_ Successful Requests</td>
+<td><a id='PACKET3_successful_requests'></a></td>
+<td></td>
+</tr>
+
+<tr>
+<td>PACKET3_ Failed Requests</td>
+<td><a id='PACKET3_failed_requests'></a></td>
+<td></td>
+</tr>
+
+<tr>
+<td>PACKET3_ Exception Errors</td>
+<td><a id='PACKET3_exception_errors'></a></td>
+<td></td>
+</tr>
+
+<tr>
+<td>PACKET3_ Connection</td>
+<td><a id='PACKET3_connection'></a></td>
+<td></td>
+</tr>
+
+</tbody>
+</table>
+<SCRIPT>
+var xmlHttp=createXmlHttpObject();
+
+function createXmlHttpObject(){
+ if(window.XMLHttpRequest){
+    xmlHttp=new XMLHttpRequest();
+ }else{
+    xmlHttp=new ActiveXObject('Microsoft.XMLHTTP');
+ }
+ return xmlHttp;
+}
+
+function process(){
+ if(xmlHttp.readyState==0 || xmlHttp.readyState==4){
+   xmlHttp.open('PUT','xml',true);
+   xmlHttp.onreadystatechange=handleServerResponse;
+   xmlHttp.send(null);
+ }
+ setTimeout('process()',1000);
+}
+
+function handleServerResponse(){
+ if(xmlHttp.readyState==4 && xmlHttp.status==200){
+   xmlResponse=xmlHttp.responseXML;
+
+   xmldoc = xmlResponse.getElementsByTagName('runtime');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('runtime').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('IP_Address');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('IP_Address').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('Voltage');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('Voltage').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('Ampere');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('Ampere').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('Watt');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('Watt').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('Var');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('Var').innerHTML=message;
+
+
+   xmldoc = xmlResponse.getElementsByTagName('ApparentPower');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('ApparentPower').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('PowerFactor');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('PowerFactor').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('Frequency');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('Frequency').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('Pstkwh');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('Pstkwh').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('Pstkvarh');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('Pstkvarh').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('Ngtkvarh');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('Ngtkvarh').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('wattThreshold');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('wattThreshold').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('PACKET3_requests');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('PACKET3_requests').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('PACKET3_successful_requests');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('PACKET3_successful_requests').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('PACKET3_failed_requests');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('PACKET3_failed_requests').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('PACKET3_exception_errors');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('PACKET3_exception_errors').innerHTML=message;
+
+   xmldoc = xmlResponse.getElementsByTagName('PACKET3_connection');
+   message = xmldoc[0].firstChild.nodeValue;
+   document.getElementById('PACKET3_connection').innerHTML=message;
+
+ }
+}
+</SCRIPT>
+</BODY>
+</HTML>

@@ -1,0 +1,21 @@
+{
+  "filename": "GAHE_ASYNCMQTT_rev04.ino",
+  "compiledate": "Jun  1 2018",
+  "compiletime": "01:23:32",
+  "lastboot": "00:00:00 00/00/1970",
+  "chipid": 258629,
+  "cpufreq": 160,
+  "sketchsize": 450368,
+  "freesketchspace": 2695168,
+  "flashchipid": 1458208,
+  "flashchipmode": false,
+  "flashchipsize": 4194304,
+  "flashchiprealsize": 4194304,
+  "flashchipspeed": 80000000,
+  "cyclecount": 371581628,
+  "corever": "00000000",
+  "sdkver": "2.2.1(cfd48f3)",
+  "bootmode": 1,
+  "bootversion": 31,
+  "resetreason": "Software/System restart"
+}
