@@ -226,7 +226,7 @@ void EEPROM_read_string(int start, int count, String& val) {
 }
 
 void EEPROM_write_string(int start, int count, String val) {
-  for (int i = 0; i < count; ++i) {
+  for (uint16_t i = 0; i < count; ++i) {
     if (i < val.length()) {
       EEPROM.write(start + i, val[i]);
     } else {

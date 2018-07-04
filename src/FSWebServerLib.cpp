@@ -370,7 +370,7 @@ void AsyncFSWebServer::sendTimeData()
     }
 
     size_t size = paramXmlFile.size();
-    PRINT("PARAMETER_XML_FILE file size: % d bytes\r\n", size);
+    PRINT("PARAMETER_XML_FILE file size: %d bytes\r\n", size);
     if (size > 1024)
     {
       PRINT("WARNING, file size maybe too large\r\n");
@@ -393,7 +393,7 @@ void AsyncFSWebServer::sendTimeData()
     //close the file, save your memory, keep healthy :-)
     paramXmlFile.close();
 
-    //PRINT(" % s\r\n", buf);
+    //PRINT(" %s\r\n", buf);
 
     StreamString output;
 
@@ -423,7 +423,7 @@ void AsyncFSWebServer::sendTimeData()
     }
 
     size_t size = paramXmlFile.size();
-    PRINT("PARAMETER_XML_FILE file size: % d bytes\r\n", size);
+    PRINT("PARAMETER_XML_FILE file size: %d bytes\r\n", size);
     if (size > 1024)
     {
       PRINT("WARNING, file size maybe too large\r\n");
@@ -1667,14 +1667,14 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
   { //UPLOAD_FILE_START
     SPIFFS.end();
     Update.runAsync(true);
-    PRINT("Update start: %s\n", filename.c_str());
+    PRINT("Update start: %s\r\n", filename.c_str());
     uint32_t maxSketchSpace = ESP.getSketchSize();
-    PRINT("Max free scketch space: %u\n", maxSketchSpace);
-    PRINT("New scketch size: %u\n", _updateSize);
+    PRINT("Max free scketch space: %u\r\n", maxSketchSpace);
+    PRINT("New scketch size: %u\r\n", _updateSize);
     if (_browserMD5 != NULL && _browserMD5 != "")
     {
       Update.setMD5(_browserMD5.c_str());
-      PRINT("Hash from client: %s\n", _browserMD5.c_str());
+      PRINT("Hash from client: %s\r\n", _browserMD5.c_str());
     }
     if (!Update.begin(_updateSize))
     { //start with max available size

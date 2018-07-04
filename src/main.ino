@@ -1,4 +1,4 @@
-#include <Arduino.h>
+// #include <Arduino.h>
 //#include <SoftwareSerial.h>
 
 // Coba pakai D1,D2,D5,D6 on NodeMcu
