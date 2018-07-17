@@ -429,7 +429,7 @@ void modbus_loop() {
         lastTimer1s = millis();
 
         if (mqttClient.connected()) {
-          DynamicJsonBuffer jsonBuffer;
+          StaticJsonBuffer<1024> jsonBuffer;
           JsonObject &root = jsonBuffer.createObject();
 
           root[FPSTR(pgm_voltage)] = bufVoltage;

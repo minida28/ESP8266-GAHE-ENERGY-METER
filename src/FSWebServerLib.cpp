@@ -79,7 +79,7 @@ void runAsyncClientEmoncms()
     //const char* fulljson = json[FPSTR(pgm_fulljson)];
     const char *host = json[FPSTR(pgm_host)];
 
-    DynamicJsonBuffer fulljsonBuffer;
+    StaticJsonBuffer<512> fulljsonBuffer;
     JsonObject &key = fulljsonBuffer.createObject();
     key[FPSTR(pgm_voltage)] = bufVoltage;
     key[FPSTR(pgm_ampere)] = bufAmpere;
@@ -167,7 +167,7 @@ void runAsyncClientThingspeak()
     file.readBytes(buf, size);
     file.close();
 
-    DynamicJsonBuffer jsonBuffer;
+    StaticJsonBuffer<512> jsonBuffer;
     JsonObject &json = jsonBuffer.parseObject(buf);
     if (!json.success())
     {
@@ -697,8 +697,8 @@ bool AsyncFSWebServer::loadHTTPAuth()
   configFile.close();
   DEBUGLOG("JSON secret file size: %d bytes\n", size);
   //DynamicJsonBuffer jsonBuffer(256);
-  DynamicJsonBuffer jsonBuffer;
-  //StaticJsonBuffer<256> jsonBuffer;
+  // DynamicJsonBuffer jsonBuffer;
+  StaticJsonBuffer<256> jsonBuffer;
   JsonObject &json = jsonBuffer.parseObject(buf.get());
 
   if (!json.success())
@@ -950,7 +950,7 @@ bool AsyncFSWebServer::load_config_network()
   //close the file, save your memory, keep healthy :-)
   file.close();
 
-  DynamicJsonBuffer jsonBuffer;
+  StaticJsonBuffer<512> jsonBuffer;
   JsonObject &root = jsonBuffer.parseObject(buf);
 
   if (!root.success())
@@ -1006,7 +1006,7 @@ bool AsyncFSWebServer::load_config_time()
   //close the file, save your memory, keep healthy :-)
   file.close();
 
-  DynamicJsonBuffer jsonBuffer;
+  StaticJsonBuffer<1024> jsonBuffer;
   JsonObject &root = jsonBuffer.parseObject(buf);
 
   if (!root.success())
