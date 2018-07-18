@@ -26,7 +26,6 @@ uint8_t Tx = 3;
 SoftwareSerial swSer(Rx, Tx, false, 256);
 #endif
 
-
 // This is the easiest way to create new packets
 // Add as many as you want. TOTAL_NO_OF_PACKETS
 // is automatically updated.
@@ -92,7 +91,6 @@ char bufPowerFactor[10];
 char bufApparentPower[10];
 char bufUnk2[10];
 
-
 // Set initial max Watt Threshold value.
 // For 10 Amps MCB, I suggested 2400 watt (around 11A) as the initial value.
 float wattThreshold = 2400.0;
@@ -113,12 +111,12 @@ unsigned long lastTimer16s = 0;
 
 //SoftwareSerial swSer(3, 1, false, 256);
 
-void modbus_setup() {
+void modbus_setup()
+{
 
 #if defined(SOFTWARESERIAL)
   swSer.begin(baud);
 #endif
-
 
   // Initialize each packet
 
@@ -128,19 +126,19 @@ void modbus_setup() {
   */
 
   modbus_construct(&packets[PACKET1], 3, READ_INPUT_REGISTERS, 10, 2, 0);    // read Present Voltage (Volt)
-  modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2);   // read Present Current (Ampere)
-  modbus_construct(&packets[PACKET3], 3, READ_INPUT_REGISTERS, 28, 2, 4);   // read Present True Power (Watt or kW)
-  modbus_construct(&packets[PACKET4], 3, READ_INPUT_REGISTERS, 36, 2, 6);   // read Present Reactive Power (VAr or kVAr)
-  modbus_construct(&packets[PACKET5], 3, READ_INPUT_REGISTERS, 48, 2, 8);   // read Present Frequency (Hz)
-  modbus_construct(&packets[PACKET6], 3, READ_INPUT_REGISTERS, 50, 2, 10);  // read Accumulative Positive kWh
-  modbus_construct(&packets[PACKET7], 3, READ_INPUT_REGISTERS, 54, 2, 12);  // read Accumulative Positive kVarh
-  modbus_construct(&packets[PACKET8], 3, READ_INPUT_REGISTERS, 56, 2, 14);  // read Accumulative Negative kVarh
-  modbus_construct(&packets[PACKET9], 3, READ_INPUT_REGISTERS, 58, 2, 16);  // read Power Factor (Cos φ)
+  modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2);    // read Present Current (Ampere)
+  modbus_construct(&packets[PACKET3], 3, READ_INPUT_REGISTERS, 28, 2, 4);    // read Present True Power (Watt or kW)
+  modbus_construct(&packets[PACKET4], 3, READ_INPUT_REGISTERS, 36, 2, 6);    // read Present Reactive Power (VAr or kVAr)
+  modbus_construct(&packets[PACKET5], 3, READ_INPUT_REGISTERS, 48, 2, 8);    // read Present Frequency (Hz)
+  modbus_construct(&packets[PACKET6], 3, READ_INPUT_REGISTERS, 50, 2, 10);   // read Accumulative Positive kWh
+  modbus_construct(&packets[PACKET7], 3, READ_INPUT_REGISTERS, 54, 2, 12);   // read Accumulative Positive kVarh
+  modbus_construct(&packets[PACKET8], 3, READ_INPUT_REGISTERS, 56, 2, 14);   // read Accumulative Negative kVarh
+  modbus_construct(&packets[PACKET9], 3, READ_INPUT_REGISTERS, 58, 2, 16);   // read Power Factor (Cos φ)
   modbus_construct(&packets[PACKET10], 3, READ_INPUT_REGISTERS, 64, 2, 18);  // read Present Apparent Power (VA or kVA)
   modbus_construct(&packets[PACKET11], 3, READ_INPUT_REGISTERS, 70, 2, 20);  // ???
-  modbus_construct(&packets[PACKET12], 3, READ_INPUT_REGISTERS, 544, 1, 22);   // read Year and month ??
-  modbus_construct(&packets[PACKET13], 3, READ_INPUT_REGISTERS, 545, 1, 23);  // read Day & Hour ??
-  modbus_construct(&packets[PACKET14], 3, READ_INPUT_REGISTERS, 546, 1, 24);  // read Minute & Second
+  modbus_construct(&packets[PACKET12], 3, READ_INPUT_REGISTERS, 544, 1, 22); // read Year and month ??
+  modbus_construct(&packets[PACKET13], 3, READ_INPUT_REGISTERS, 545, 1, 23); // read Day & Hour ??
+  modbus_construct(&packets[PACKET14], 3, READ_INPUT_REGISTERS, 546, 1, 24); // read Minute & Second
 
   // Initialize the Modbus Finite State Machine
   //modbus_configure(&Serial, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
@@ -151,23 +149,25 @@ void modbus_setup() {
   modbus_configure(&Serial, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
 #endif
 
-
   oldrequestPACKET2 = packets[PACKET2].successful_requests;
   oldrequestPACKET3 = packets[PACKET3].successful_requests;
   oldrequestPACKET6 = packets[PACKET6].successful_requests;
 }
 
-void modbus_loop() {
+void modbus_loop()
+{
   /* Reset the ESP8266 if no Modbus connections for more than 2 minutes */
 
-  if (packets[PACKET1].connection == 1 && packets[PACKET2].connection == 1 && packets[PACKET3].connection == 1 && packets[PACKET6].connection == 1) {
+  if (packets[PACKET1].connection == 1 && packets[PACKET2].connection == 1 && packets[PACKET3].connection == 1 && packets[PACKET6].connection == 1)
+  {
     lastmillisoldPacketConnection = millis();
     // oldWatt = Watt;
   }
-  else if (millis() - lastmillisoldPacketConnection > 120000) {
-    while (true);
+  else if (millis() - lastmillisoldPacketConnection > 120000)
+  {
+    // while (true);
+    return;
   }
-
 
   //  modbus_construct(&packets[PACKET1], 3, READ_INPUT_REGISTERS, 10, 2, 0);    // read Present Voltage (Volt)
   //  modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2);   // read Present Current (Ampere)
@@ -184,10 +184,10 @@ void modbus_loop() {
   //  modbus_construct(&packets[PACKET13], 3, READ_INPUT_REGISTERS, 545, 1, 23);  // read Day & Hour ??
   //  modbus_construct(&packets[PACKET14], 3, READ_INPUT_REGISTERS, 546, 1, 24);  // read Minute & Second
 
-
   //update values if new request based on Watt request [PACKET3]
   static uint16_t numReq_old;
-  if (packets[PACKET3].requests != numReq_old) {
+  if (packets[PACKET3].requests != numReq_old)
+  {
 
     //update old values
     numReq_old = packets[PACKET3].requests;
@@ -200,10 +200,10 @@ void modbus_loop() {
     dtostrf(packets[PACKET3].connection, 1, 0, bufConnectionPACKET3);
   }
 
-
-  if (packets[PACKET2].successful_requests != oldrequestPACKET2 && \
-      packets[PACKET3].successful_requests != oldrequestPACKET3 && \
-      packets[PACKET6].successful_requests != oldrequestPACKET6) {
+  if (packets[PACKET2].successful_requests != oldrequestPACKET2 &&
+      packets[PACKET3].successful_requests != oldrequestPACKET3 &&
+      packets[PACKET6].successful_requests != oldrequestPACKET6)
+  {
 
     //update old values
     oldrequestPACKET2 = packets[PACKET2].successful_requests;
@@ -225,73 +225,72 @@ void modbus_loop() {
     unsigned long temp;
 
     //float Voltage;
-    temp = (unsigned long) regs[0] << 16 | regs[1];
-    Voltage = *(float*)&temp;
+    temp = (unsigned long)regs[0] << 16 | regs[1];
+    Voltage = *(float *)&temp;
 
     //float Ampere;
-    temp = (unsigned long) regs[2] << 16 | regs[3];
-    Ampere = *(float*)&temp;
+    temp = (unsigned long)regs[2] << 16 | regs[3];
+    Ampere = *(float *)&temp;
 
     //float Watt;
-    temp = (unsigned long) regs[4] << 16 | regs[5];
-    Watt = *(float*)&temp;
+    temp = (unsigned long)regs[4] << 16 | regs[5];
+    Watt = *(float *)&temp;
 
     // unsigned long ulWatt = temp;
 
     //float Var;
-    temp = (unsigned long) regs[6] << 16 | regs[7];
-    Var = *(float*)&temp;
+    temp = (unsigned long)regs[6] << 16 | regs[7];
+    Var = *(float *)&temp;
 
     //float Frequency;
-    temp = (unsigned long) regs[8] << 16 | regs[9];
-    Frequency = *(float*)&temp;
+    temp = (unsigned long)regs[8] << 16 | regs[9];
+    Frequency = *(float *)&temp;
 
     //float Pstkwh;
-    temp = (unsigned long) regs[10] << 16 | regs[11];
-    Pstkwh = *(float*)&temp;
+    temp = (unsigned long)regs[10] << 16 | regs[11];
+    Pstkwh = *(float *)&temp;
 
     //float Pstkvarh;
-    temp = (unsigned long) regs[12] << 16 | regs[13];
-    Pstkvarh = *(float*)&temp;
+    temp = (unsigned long)regs[12] << 16 | regs[13];
+    Pstkvarh = *(float *)&temp;
 
     //float Ngtkvarh;
-    temp = (unsigned long) regs[14] << 16 | regs[15];
-    Ngtkvarh = *(float*)&temp;
+    temp = (unsigned long)regs[14] << 16 | regs[15];
+    Ngtkvarh = *(float *)&temp;
 
     //float PowerFactor;
-    temp = (unsigned long) regs[16] << 16 | regs[17];
-    PowerFactor = *(float*)&temp;
+    temp = (unsigned long)regs[16] << 16 | regs[17];
+    PowerFactor = *(float *)&temp;
 
     //float ApparentPower;
-    temp = (unsigned long) regs[18] << 16 | regs[19];
-    ApparentPower = *(float*)&temp;
+    temp = (unsigned long)regs[18] << 16 | regs[19];
+    ApparentPower = *(float *)&temp;
 
     //float Unk2;
-    temp = (unsigned long) regs[20] << 16 | regs[21];
-    Unk2 = *(float*)&temp;
+    temp = (unsigned long)regs[20] << 16 | regs[21];
+    Unk2 = *(float *)&temp;
 
     /* Convert all floats into string prior to publish to MQTT broker */
 
-    dtostrf(Voltage, 1, 1, bufVoltage);               /* Voltage */
-    dtostrf(Ampere, 1, 2, bufAmpere);                 /* Ampere */
-    dtostrf(Watt, 1, 1, bufWatt);                     /* Wattage */
-    dtostrf(Var, 1, 1, bufVar);                       /* Positive Var */
-    dtostrf(Frequency, 1, 1, bufFrequency);           /* Frequency Hz */
-    dtostrf(Pstkwh, 1, 1, bufPstkwh);                 /* Positive kWh */
-    dtostrf(Pstkvarh, 1, 1, bufPstkvarh);             /* Positive kVarh */
-    dtostrf(Ngtkvarh, 1, 1, bufNgtkvarh);             /* Negative kVarh */
-    dtostrf(PowerFactor, 1, 1, bufPowerFactor);       /* Power Factor */
-    dtostrf(ApparentPower, 1, 1, bufApparentPower);   /* Apparent Power */
-    dtostrf(Unk2, 1, 1, bufUnk2);                     /* Unk2 */
-
+    dtostrf(Voltage, 1, 1, bufVoltage);             /* Voltage */
+    dtostrf(Ampere, 1, 2, bufAmpere);               /* Ampere */
+    dtostrf(Watt, 1, 1, bufWatt);                   /* Wattage */
+    dtostrf(Var, 1, 1, bufVar);                     /* Positive Var */
+    dtostrf(Frequency, 1, 1, bufFrequency);         /* Frequency Hz */
+    dtostrf(Pstkwh, 1, 1, bufPstkwh);               /* Positive kWh */
+    dtostrf(Pstkvarh, 1, 1, bufPstkvarh);           /* Positive kVarh */
+    dtostrf(Ngtkvarh, 1, 1, bufNgtkvarh);           /* Negative kVarh */
+    dtostrf(PowerFactor, 1, 1, bufPowerFactor);     /* Power Factor */
+    dtostrf(ApparentPower, 1, 1, bufApparentPower); /* Apparent Power */
+    dtostrf(Unk2, 1, 1, bufUnk2);                   /* Unk2 */
 
     // Check if Watt Threshold has been changed or buffer is empty.
     // If yes, update the last watt Threshold and its buffer value
-    if (wattThreshold != lastwattThreshold || strlen(bufwattThreshold) == 0) {
+    if (wattThreshold != lastwattThreshold || strlen(bufwattThreshold) == 0)
+    {
 
       lastwattThreshold = wattThreshold;
       dtostrf(wattThreshold, 1, 1, bufwattThreshold);
-
     }
 
     // -------------------------------------------------------------------
@@ -299,17 +298,20 @@ void modbus_loop() {
     // -------------------------------------------------------------------
 
     //process only if websocket has client or MQTT is connected
-    if (WiFi.status() == WL_CONNECTED || (ws.hasClient(num) || mqttClient.connected())) {
+    if (WiFi.status() == WL_CONNECTED || (ws.hasClient(num) || mqttClient.connected()))
+    {
 
       File pubSubJsonFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
-      if (!pubSubJsonFile) {
+      if (!pubSubJsonFile)
+      {
         PRINT("Failed to open PUBSUBJSON_FILE file\r\n");
         return;
       }
 
       size_t size = pubSubJsonFile.size();
       PRINT("PUBSUBJSON_FILE file size: %d bytes\r\n", size);
-      if (size > 1024) {
+      if (size > 1024)
+      {
         PRINT("WARNING, file size maybe too large\r\n");
       }
 
@@ -324,28 +326,33 @@ void modbus_loop() {
       pubSubJsonFile.close();
 
       StaticJsonBuffer<1024> jsonBuffer;
-      JsonObject& root = jsonBuffer.parseObject(buf);
+      JsonObject &root = jsonBuffer.parseObject(buf);
 
-      if (!root.success()) {
+      if (!root.success())
+      {
         PRINT("Failed to parse PUBSUBJSON_FILE file\r\n");
         return;
       }
 
-      JsonArray& pub_param = root[FPSTR(pgm_pub_param)];
+      JsonArray &pub_param = root[FPSTR(pgm_pub_param)];
 
       unsigned long timer1;
 
       //publish watt and and ampere readings in higher publish rate (publish every 1 second)
       //if watt is above wattThreshold
-      if (Watt > wattThreshold) {
+      if (Watt > wattThreshold)
+      {
         timer1 = 1000;
         oldWatt = Watt;
       }
-      else {
+      else
+      {
         timer1 = 10000;
-        if (oldWatt > wattThreshold) {
+        if (oldWatt > wattThreshold)
+        {
           oldWatt = Watt;
-          if (mqttClient.connected()) {
+          if (mqttClient.connected())
+          {
             //const char* wattTopic = PSTR("/rumah/sts/kwh1/watt");
             //const char* ampereTopic = PSTR("/rumah/sts/kwh1/ampere");
 
@@ -356,21 +363,22 @@ void modbus_loop() {
       }
 
       static unsigned long lastTimer;
-      if (millis() - lastTimer >= timer1) {
-
-        lastTimer = millis();   //  Update time
+      if (millis() - lastTimer >= timer1)
+      {
+        lastTimer = millis(); //  Update time
 
         uint8_t lenBaseTopic = strlen(root[FPSTR(pgm_pub_default_basetopic)]);
 
-        const char* bt = root[FPSTR(pgm_pub_default_basetopic)];
+        const char *bt = root[FPSTR(pgm_pub_default_basetopic)];
 
-        for (int i = 0; i < 11; i++) {
+        for (int i = 0; i < 11; i++)
+        {
 
           char cat[lenBaseTopic + 1];
 
-          strlcpy(cat, bt, sizeof(cat));
+          strlcpy(cat, bt, sizeof(cat) / sizeof(cat[0]));
 
-          const char* pr = pub_param[i];
+          const char *pr = pub_param[i];
 
           strcat(cat, pr);
 
@@ -378,57 +386,72 @@ void modbus_loop() {
           //            ws.text(num, cat);
           //          }
 
-          if (mqttClient.connected()) {
-            if (i == 0) {
-              if (!isnan(Voltage)) {
+          if (mqttClient.connected())
+          {
+            if (i == 0)
+            {
+              if (!isnan(Voltage))
+              {
                 mqttClient.publish(cat, 0, 0, bufVoltage);
               }
             }
-            if (i == 1) {
+            if (i == 1)
+            {
               mqttClient.publish(cat, 0, 0, bufAmpere);
             }
-            if (i == 2) {
+            if (i == 2)
+            {
               mqttClient.publish(cat, 0, 0, bufWatt);
             }
-            if (i == 3) {
+            if (i == 3)
+            {
               mqttClient.publish(cat, 0, 0, bufVar);
             }
-            if (i == 4) {
+            if (i == 4)
+            {
               mqttClient.publish(cat, 0, 0, bufFrequency);
             }
-            if (i == 5) {
-              if (Pstkwh >= 0.01 || !isnan(Pstkwh)) {
+            if (i == 5)
+            {
+              if (Pstkwh >= 0.01 || !isnan(Pstkwh))
+              {
                 mqttClient.publish(cat, 0, 0, bufPstkwh);
               }
             }
-            if (i == 6) {
+            if (i == 6)
+            {
               mqttClient.publish(cat, 0, 0, bufPstkvarh);
             }
-            if (i == 7) {
+            if (i == 7)
+            {
               mqttClient.publish(cat, 0, 0, bufNgtkvarh);
             }
-            if (i == 8) {
+            if (i == 8)
+            {
               mqttClient.publish(cat, 0, 0, bufPowerFactor);
             }
-            if (i == 9) {
+            if (i == 9)
+            {
               mqttClient.publish(cat, 0, 0, bufApparentPower);
             }
-            if (i == 10) {
+            if (i == 10)
+            {
               mqttClient.publish(cat, 0, 0, bufUnk2);
             }
           }
         }
       }
 
-
       // -------------------------------------------------------------------
       // 1 SECOND
       // -------------------------------------------------------------------
       static unsigned long lastTimer1s;
-      if (millis() - lastTimer1s >= 1000) {
+      if (millis() - lastTimer1s >= 1000)
+      {
         lastTimer1s = millis();
 
-        if (mqttClient.connected()) {
+        if (mqttClient.connected())
+        {
           StaticJsonBuffer<1024> jsonBuffer;
           JsonObject &root = jsonBuffer.createObject();
 
@@ -458,26 +481,28 @@ void modbus_loop() {
       // -------------------------------------------------------------------
 
       static unsigned long lastTimer10s;
-      if (millis() - lastTimer10s >= 10000) {
+      if (millis() - lastTimer10s >= 10000)
+      {
 
-        lastTimer10s = millis();   //  Update time
+        lastTimer10s = millis(); //  Update time
 
         //measure base topic length
         uint8_t lenBaseTopic = strlen(root[FPSTR(pgm_pub_10s_basetopic)]);
 
         //pointer to base topic
-        const char* bt = root[FPSTR(pgm_pub_10s_basetopic)];
+        const char *bt = root[FPSTR(pgm_pub_10s_basetopic)];
 
-        for (int i = 0; i < 11; i++) {
+        for (int i = 0; i < 11; i++)
+        {
 
           //create buffer to hold the result of concat
           char cat[lenBaseTopic + 1];
 
           //copy to buffer
-          strlcpy(cat, bt, sizeof(cat));
+          strlcpy(cat, bt, sizeof(cat) / sizeof(cat[0]));
 
           //pointer to param
-          const char* pr = pub_param[i];
+          const char *pr = pub_param[i];
 
           //concat param to buffer
           strcat(cat, pr);
@@ -486,42 +511,56 @@ void modbus_loop() {
           //            //ws.text(num, cat);
           //          }
 
-          if (mqttClient.connected()) {
-            if (i == 0) {
-              if (!isnan(Voltage)) {
+          if (mqttClient.connected())
+          {
+            if (i == 0)
+            {
+              if (!isnan(Voltage))
+              {
                 mqttClient.publish(cat, 0, 0, bufVoltage);
               }
             }
-            if (i == 1) {
+            if (i == 1)
+            {
               mqttClient.publish(cat, 0, 0, bufAmpere);
             }
-            if (i == 2) {
+            if (i == 2)
+            {
               mqttClient.publish(cat, 0, 0, bufWatt);
             }
-            if (i == 3) {
+            if (i == 3)
+            {
               mqttClient.publish(cat, 0, 0, bufVar);
             }
-            if (i == 4) {
+            if (i == 4)
+            {
               mqttClient.publish(cat, 0, 0, bufFrequency);
             }
-            if (i == 5) {
-              if (Pstkwh >= 0.01 || !isnan(Pstkwh)) {
+            if (i == 5)
+            {
+              if (Pstkwh >= 0.01 || !isnan(Pstkwh))
+              {
                 mqttClient.publish(cat, 0, 0, bufPstkwh);
               }
             }
-            if (i == 6) {
+            if (i == 6)
+            {
               mqttClient.publish(cat, 0, 0, bufPstkvarh);
             }
-            if (i == 7) {
+            if (i == 7)
+            {
               mqttClient.publish(cat, 0, 0, bufNgtkvarh);
             }
-            if (i == 8) {
+            if (i == 8)
+            {
               mqttClient.publish(cat, 0, 0, bufPowerFactor);
             }
-            if (i == 9) {
+            if (i == 9)
+            {
               mqttClient.publish(cat, 0, 0, bufApparentPower);
             }
-            if (i == 10) {
+            if (i == 10)
+            {
               mqttClient.publish(cat, 0, 0, bufUnk2);
             }
           }
@@ -533,15 +572,18 @@ void modbus_loop() {
       // -------------------------------------------------------------------
 
       static unsigned long lastTimer15s = millis();
-      if (millis() - lastTimer15s >= 20000) {
+      if (millis() - lastTimer15s >= 20000)
+      {
 
-        lastTimer15s = millis();   //  Update time
+        lastTimer15s = millis(); //  Update time
 
         static bool updateToCloud;
-        if (packets[PACKET6].successful_requests >= 10) {
+        if (packets[PACKET6].successful_requests >= 10)
+        {
           updateToCloud = true;
         }
-        if (updateToCloud && WiFi.status() == WL_CONNECTED) {
+        if (updateToCloud && WiFi.status() == WL_CONNECTED)
+        {
           runAsyncClientEmoncms();
           runAsyncClientThingspeak();
         }
@@ -549,11 +591,8 @@ void modbus_loop() {
     }
   }
 
-
   ////----------TIME
 
-
-  
   // int hibyteYear = (regs[22] & 0xff00) >> 8;
   // int lobyteMonth = (regs[22] & 0xff);
   // int hibyteDay = (regs[23] & 0xff00) >> 8;
@@ -561,14 +600,12 @@ void modbus_loop() {
   // int hibyteMinute = (regs[24] & 0xff00) >> 8;
   uint16_t lobyteSecond = (regs[24] & 0xff);
 
-
   // use the following code to avoid using delay()
 
   // print only if second value has changed; i.e print every second
   if (lobyteSecond != oldSecond)
   {
     oldSecond = lobyteSecond;
-
 
     /*
       Serial1.print("readReg[22]: ");
@@ -580,8 +617,7 @@ void modbus_loop() {
     */
 
     DEBUGMODBUS("%d Year, %d Month, %d Day, %d Hour, %d Minute, %d Second\n",
-                hibyteYear, lobyteMonth, hibyteDay, lobyteHour, hibyteMinute, lobyteSecond
-               );
+                hibyteYear, lobyteMonth, hibyteDay, lobyteHour, hibyteMinute, lobyteSecond);
 
     //    DEBUGMODBUS("V: %.1f, ", Voltage);
     //    DEBUGMODBUS("I: %.3f, ", Ampere);
@@ -595,7 +631,6 @@ void modbus_loop() {
     //    DEBUGMODBUS("VA: %.1f, ", ApparentPower);
     //    DEBUGMODBUS("Unk2: %.1f", Unk2);
     //    DEBUGMODBUS("\r\n");
-
 
     /*
       Serial1.print("requests: ");

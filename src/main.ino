@@ -219,7 +219,7 @@ void setup()
 
   SPIFFS.begin(); // Not really needed, checked inside library and started if needed
   
-  WiFi.setSleepMode(WIFI_NONE_SLEEP);
+  // WiFi.setSleepMode(WIFI_NONE_SLEEP);
   ESPHTTPServer.begin(&SPIFFS);
 
   modbus_setup();

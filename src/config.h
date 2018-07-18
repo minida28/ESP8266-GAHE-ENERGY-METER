@@ -35,16 +35,10 @@
 #include <ESP8266NetBIOS.h>
 #include <StreamString.h>
 
-
 #include "FSWebServerLib.h"
 #include "gahe1progmem.h"
 
 #include "PingAlive.h"
-
-
-
-
-
 
 #define PRINTPORT Serial1
 #define DEBUGPORT Serial1
@@ -54,48 +48,55 @@
 #define RELEASEMODBUS
 
 #define PROGMEM_T __attribute__((section(".irom.text.template")))
-#define PRINT(fmt, ...) \
-  { static const char pfmt[] PROGMEM_T = fmt; PRINTPORT.printf_P(pfmt, ## __VA_ARGS__); }
-
-
+#define PRINT(fmt, ...)                       \
+  {                                           \
+    static const char pfmt[] PROGMEM_T = fmt; \
+    PRINTPORT.printf_P(pfmt, ##__VA_ARGS__);  \
+  }
 
 #ifndef RELEASE
-#define DEBUGLOG(fmt, ...) \
-  { static const char pfmt[] PROGMEM_T = fmt; DEBUGPORT.printf_P(pfmt, ## __VA_ARGS__); }
+#define DEBUGLOG(fmt, ...)                    \
+  {                                           \
+    static const char pfmt[] PROGMEM_T = fmt; \
+    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__);  \
+  }
 #else
 #define DEBUGLOG(...)
 #endif
 
-
 #ifndef RELEASEMQTT
-#define DEBUGMQTT(fmt, ...) \
-  { static const char pfmt[] PROGMEM_T = fmt; DEBUGPORT.printf_P(pfmt, ## __VA_ARGS__); }
+#define DEBUGMQTT(fmt, ...)                   \
+  {                                           \
+    static const char pfmt[] PROGMEM_T = fmt; \
+    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__);  \
+  }
 #else
 #define DEBUGMQTT(...)
 #endif
 
-
 #ifndef RELEASEMODBUS
-#define DEBUGMODBUS(fmt, ...) \
-  { static const char pfmt[] PROGMEM_T = fmt; DEBUGPORT.printf_P(pfmt, ## __VA_ARGS__); }
+#define DEBUGMODBUS(fmt, ...)                 \
+  {                                           \
+    static const char pfmt[] PROGMEM_T = fmt; \
+    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__);  \
+  }
 #else
 #define DEBUGMODBUS(...)
 #endif
 
-#define ESP_PIN_0 0 //D3
-#define ESP_PIN_1 1 //Tx
-#define ESP_PIN_2 2 //D4 -> Led on NodeMcu
-#define ESP_PIN_3 3 //D9(Rx)
-#define ESP_PIN_4 4 //D2
-#define ESP_PIN_5 5 //D1
-#define ESP_PIN_9 9 //S2
+#define ESP_PIN_0 0   //D3
+#define ESP_PIN_1 1   //Tx
+#define ESP_PIN_2 2   //D4 -> Led on NodeMcu
+#define ESP_PIN_3 3   //D9(Rx)
+#define ESP_PIN_4 4   //D2
+#define ESP_PIN_5 5   //D1
+#define ESP_PIN_9 9   //S2
 #define ESP_PIN_10 10 //S3
 #define ESP_PIN_12 12 //D6
 #define ESP_PIN_13 13 //D7
 #define ESP_PIN_14 14 //D5
 #define ESP_PIN_15 15 //D8
 #define ESP_PIN_16 16 //D0 -> Led on ESP8266
-
 
 // -------------------------------------------------------------------
 // Load and save the EmonESP config.
@@ -150,7 +151,6 @@ extern String emoncms_node;
 extern String emoncms_apikey;
 extern String emoncms_fingerprint;
 
-
 // -------------------------------------------------------------------
 // Load saved settings
 // -------------------------------------------------------------------
@@ -180,31 +180,30 @@ extern void config_save_wifi(String qsid, String qpass);
 // Save ALL CONFIG
 // -------------------------------------------------------------------
 extern void config_save_all(
-  String qsid,
-  String qpass,
-  String qip_0,
-  String qip_1,
-  String qip_2,
-  String qip_3,
-  String qnetmask_0,
-  String qnetmask_1,
-  String qnetmask_2,
-  String qnetmask_3,
-  String qgateway_0,
-  String qgateway_1,
-  String qgateway_2,
-  String qgateway_3,
-  String qdns_0,
-  String qdns_1,
-  String qdns_2,
-  String qdns_3,
-  String qdhcp,
-  String qntp_server,
-  String qntp_period,
-  String qtimezone,
-  String qdaylight,
-  String qdevicename
-  );
+    String qsid,
+    String qpass,
+    String qip_0,
+    String qip_1,
+    String qip_2,
+    String qip_3,
+    String qnetmask_0,
+    String qnetmask_1,
+    String qnetmask_2,
+    String qnetmask_3,
+    String qgateway_0,
+    String qgateway_1,
+    String qgateway_2,
+    String qgateway_3,
+    String qdns_0,
+    String qdns_1,
+    String qdns_2,
+    String qdns_3,
+    String qdhcp,
+    String qntp_server,
+    String qntp_period,
+    String qtimezone,
+    String qdaylight,
+    String qdevicename);
 
 // -------------------------------------------------------------------
 // Reset the config back to defaults

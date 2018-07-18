@@ -397,7 +397,7 @@ void AsyncFSWebServer::sendTimeData()
 
     StreamString output;
 
-    if (output.reserve(512))
+    if (output.reserve(1024))
     {
       output.printf(buf,
                     NTP.getTimeStr().c_str(),
@@ -556,8 +556,8 @@ void AsyncFSWebServer::begin(FS *fs)
   itoa(ESP.getChipId(), bufChipId, 10);
 
   //char bufHostName[32];
-  strlcpy(_config.hostname, bufPrefix, sizeof(_config.hostname));
-  strncat(_config.hostname, bufChipId, sizeof(bufChipId));
+  strlcpy(_config.hostname, bufPrefix, sizeof(_config.hostname) / sizeof(_config.hostname[0]));
+  strncat(_config.hostname, bufChipId, sizeof(bufChipId) / sizeof(bufChipId[0]));
 
   if (!load_config_network())
   {
@@ -632,15 +632,15 @@ void AsyncFSWebServer::begin(FS *fs)
 
   MDNS.addService("http", "tcp", 80);
 
-  NBNS.begin(_config.hostname);
+  // NBNS.begin(_config.hostname);
 
   //SSDP.setSchemaURL("ssdpxml");
-  SSDP.setSchemaURL("ssdpxml");
-  SSDP.setHTTPPort(80);
-  SSDP.setDeviceType("upnp:rootdevice");
-  //  SSDP.setModelName(_config.hostname.c_str());
-  //  SSDP.setModelNumber(FPSTR(modelNumber));
-  SSDP.begin();
+  // SSDP.setSchemaURL("ssdpxml");
+  // SSDP.setHTTPPort(80);
+  // SSDP.setDeviceType("upnp:rootdevice");
+  // //  SSDP.setModelName(_config.hostname.c_str());
+  // //  SSDP.setModelNumber(FPSTR(modelNumber));
+  // SSDP.begin();
 
   serverInit(); // Configure and start Web server
 
@@ -963,15 +963,15 @@ bool AsyncFSWebServer::load_config_network()
   root.prettyPrintTo(Serial);
 #endif
 
-  // strlcpy(_config.hostname, root[FPSTR(pgm_hostname)], sizeof(_config.hostname));
-  strlcpy(_config.ssid, root[FPSTR(pgm_ssid)], sizeof(_config.ssid));
-  strlcpy(_config.password, root[FPSTR(pgm_password)], sizeof(_config.password));
+  // strlcpy(_config.hostname, root[FPSTR(pgm_hostname)], sizeof(_config.hostname)/sizeof(_config.hostname[0]));
+  strlcpy(_config.ssid, root[FPSTR(pgm_ssid)], sizeof(_config.ssid) / sizeof(_config.ssid[0]));
+  strlcpy(_config.password, root[FPSTR(pgm_password)], sizeof(_config.password) / sizeof(_config.password[0]));
   _config.dhcp = root[FPSTR(pgm_dhcp)];
-  strlcpy(_config.static_ip, root[FPSTR(pgm_static_ip)], sizeof(_config.static_ip));
-  strlcpy(_config.netmask, root[FPSTR(pgm_netmask)], sizeof(_config.netmask));
-  strlcpy(_config.gateway, root[FPSTR(pgm_gateway)], sizeof(_config.gateway));
-  strlcpy(_config.dns0, root[FPSTR(pgm_dns0)], sizeof(_config.dns0));
-  strlcpy(_config.dns1, root[FPSTR(pgm_dns1)], sizeof(_config.dns1));
+  strlcpy(_config.static_ip, root[FPSTR(pgm_static_ip)], sizeof(_config.static_ip) / sizeof(_config.static_ip[0]));
+  strlcpy(_config.netmask, root[FPSTR(pgm_netmask)], sizeof(_config.netmask) / sizeof(_config.netmask[0]));
+  strlcpy(_config.gateway, root[FPSTR(pgm_gateway)], sizeof(_config.gateway) / sizeof(_config.gateway[0]));
+  strlcpy(_config.dns0, root[FPSTR(pgm_dns0)], sizeof(_config.dns0) / sizeof(_config.dns0[0]));
+  strlcpy(_config.dns1, root[FPSTR(pgm_dns1)], sizeof(_config.dns1) / sizeof(_config.dns1[0]));
 
   return true;
 }
@@ -1024,9 +1024,9 @@ bool AsyncFSWebServer::load_config_time()
   _configTime.enablertc = root[FPSTR(pgm_enablertc)];
   _configTime.syncinterval = root[FPSTR(pgm_syncinterval)];
   _configTime.enablentp = root[FPSTR(pgm_enablentp)];
-  strlcpy(_configTime.ntpserver_0, root[FPSTR(pgm_ntpserver_0)], sizeof(_configTime.ntpserver_0));
-  strlcpy(_configTime.ntpserver_1, root[FPSTR(pgm_ntpserver_1)], sizeof(_configTime.ntpserver_1));
-  strlcpy(_configTime.ntpserver_2, root[FPSTR(pgm_ntpserver_2)], sizeof(_configTime.ntpserver_2));
+  strlcpy(_configTime.ntpserver_0, root[FPSTR(pgm_ntpserver_0)], sizeof(_configTime.ntpserver_0) / sizeof(_configTime.ntpserver_0[0]));
+  strlcpy(_configTime.ntpserver_1, root[FPSTR(pgm_ntpserver_1)], sizeof(_configTime.ntpserver_1) / sizeof(_configTime.ntpserver_1[0]));
+  strlcpy(_configTime.ntpserver_2, root[FPSTR(pgm_ntpserver_2)], sizeof(_configTime.ntpserver_2) / sizeof(_configTime.ntpserver_2[0]));
 
   return true;
 }
@@ -1224,7 +1224,7 @@ void AsyncFSWebServer::send_NTP_configuration_values_html(AsyncWebServerRequest 
 
   AsyncResponseStream *response = request->beginResponseStream("text/json");
   DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = jsonBuffer.createObject();  
+  JsonObject &root = jsonBuffer.createObject();
 
   root[FPSTR(pgm_timezone)] = _configTime.timezone;
   root[FPSTR(pgm_dst)] = _configTime.dst;
@@ -1312,40 +1312,40 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
 
       DEBUGLOG("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
 
-      const char* name = p->name().c_str();
-      uint8_t len = strlen(name);      
+      const char *name = p->name().c_str();
+      uint8_t len = strlen(name);
 
-      if (strncmp_P(name, pgm_ssid, len) == 0)   
+      if (strncmp_P(name, pgm_ssid, len) == 0)
       {
-        strlcpy(_config.ssid, p->value().c_str(), sizeof(_config.ssid));
+        strlcpy(_config.ssid, p->value().c_str(), sizeof(_config.ssid) / sizeof(_config.ssid[0]));
       }
-      if (strncmp_P(name, pgm_password, len) == 0)   
+      if (strncmp_P(name, pgm_password, len) == 0)
       {
-        strlcpy(_config.password, p->value().c_str(), sizeof(_config.password));
+        strlcpy(_config.password, p->value().c_str(), sizeof(_config.password) / sizeof(_config.password[0]));
       }
-      if (strncmp_P(name, pgm_dhcp, len) == 0)   
+      if (strncmp_P(name, pgm_dhcp, len) == 0)
       {
         _config.dhcp = p->value();
       }
-      if (strncmp_P(name, pgm_static_ip, len) == 0)   
+      if (strncmp_P(name, pgm_static_ip, len) == 0)
       {
-        strlcpy(_config.static_ip, p->value().c_str(), sizeof(_config.static_ip));
+        strlcpy(_config.static_ip, p->value().c_str(), sizeof(_config.static_ip) / sizeof(_config.static_ip[0]));
       }
-      if (strncmp_P(name, pgm_netmask, len) == 0)   
+      if (strncmp_P(name, pgm_netmask, len) == 0)
       {
-        strlcpy(_config.netmask, p->value().c_str(), sizeof(_config.netmask));
+        strlcpy(_config.netmask, p->value().c_str(), sizeof(_config.netmask) / sizeof(_config.netmask[0]));
       }
-      if (strncmp_P(name, pgm_gateway, len) == 0)   
+      if (strncmp_P(name, pgm_gateway, len) == 0)
       {
-        strlcpy(_config.gateway, p->value().c_str(), sizeof(_config.gateway));
+        strlcpy(_config.gateway, p->value().c_str(), sizeof(_config.gateway) / sizeof(_config.gateway[0]));
       }
-      if (strncmp_P(name, pgm_dns0, len) == 0)   
+      if (strncmp_P(name, pgm_dns0, len) == 0)
       {
-        strlcpy(_config.dns0, p->value().c_str(), sizeof(_config.dns0));
+        strlcpy(_config.dns0, p->value().c_str(), sizeof(_config.dns0) / sizeof(_config.dns0[0]));
       }
-      if (strncmp_P(name, pgm_dns1, len) == 0)   
+      if (strncmp_P(name, pgm_dns1, len) == 0)
       {
-        strlcpy(_config.dns1, p->value().c_str(), sizeof(_config.dns1));
+        strlcpy(_config.dns1, p->value().c_str(), sizeof(_config.dns1) / sizeof(_config.dns1[0]));
       }
     }
     //save settings
@@ -1399,7 +1399,7 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
     //convert IP address to char array
     size_t len = strlen(WiFi.localIP().toString().c_str());
     char ipAddress[len + 1];
-    strlcpy(ipAddress, WiFi.localIP().toString().c_str(), sizeof(ipAddress));
+    strlcpy(ipAddress, WiFi.localIP().toString().c_str(), sizeof(ipAddress) / sizeof(ipAddress[0]));
 
     output.printf(buf,
                   NTP.getUptimeString().c_str(),
@@ -1454,10 +1454,10 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
 
       DEBUGLOG("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
 
-      const char* name = p->name().c_str();
-      uint8_t len = strlen(name);      
+      const char *name = p->name().c_str();
+      uint8_t len = strlen(name);
 
-      if (strncmp_P(name, pgm_timezone, len) == 0)   
+      if (strncmp_P(name, pgm_timezone, len) == 0)
       {
         _configTime.timezone = atoi(p->value().c_str());
       }
@@ -1479,22 +1479,22 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
       }
       if (strncmp_P(name, pgm_ntpserver_0, len) == 0)
       {
-        strlcpy(_configTime.ntpserver_0, p->value().c_str(), sizeof(_configTime.ntpserver_0));
+        strlcpy(_configTime.ntpserver_0, p->value().c_str(), sizeof(_configTime.ntpserver_0) / sizeof(_configTime.ntpserver_0[0]));
       }
       if (strncmp_P(name, pgm_ntpserver_1, len) == 0)
       {
-        strlcpy(_configTime.ntpserver_1, p->value().c_str(), sizeof(_configTime.ntpserver_1));
+        strlcpy(_configTime.ntpserver_1, p->value().c_str(), sizeof(_configTime.ntpserver_1) / sizeof(_configTime.ntpserver_1[0]));
       }
       if (strncmp_P(name, pgm_ntpserver_2, len) == 0)
       {
-        strlcpy(_configTime.ntpserver_2, p->value().c_str(), sizeof(_configTime.ntpserver_2));
+        strlcpy(_configTime.ntpserver_2, p->value().c_str(), sizeof(_configTime.ntpserver_2) / sizeof(_configTime.ntpserver_2[0]));
       }
     }
 
     request->send(200, "text/plain", "OK");
 
     save_config_time();
-    
+
     NTP.setTimeZone(_configTime.timezone / 10);
     NTP.setDayLight(_configTime.dst);
     NTP.setInterval(_configTime.syncinterval * 60);
@@ -1688,7 +1688,7 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
   size_t written = Update.write(data, len);
   if (written != len)
   {
-    PRINT("len = %d written = %l totalSize = %l\r\n", len, written, totalSize);
+    PRINT("len = %d written = %u totalSize = %li\r\n", len, written, totalSize);
     //Update.printError(DBG_OUTPUT_PORT);
     //return;
   }
@@ -1754,13 +1754,17 @@ void AsyncFSWebServer::send_ssdp_xml_page(AsyncWebServerRequest *request)
     //convert IP address to char array
     size_t len = strlen(WiFi.localIP().toString().c_str());
     char URLBase[len + 1];
-    strlcpy(URLBase, WiFi.localIP().toString().c_str(), sizeof(URLBase));
+    strlcpy(URLBase, WiFi.localIP().toString().c_str(), sizeof(URLBase) / sizeof(URLBase[0]));
 
-    const char *friendlyName = _config.hostname;
+    // const char *friendlyName = WiFi.hostname().toString().c_str();
+    len = strlen(WiFi.hostname().c_str());
+    char friendlyName[len + 1];
+    strlcpy(friendlyName, WiFi.hostname().c_str(), sizeof(friendlyName) / sizeof(friendlyName[0]));
+
     char presentationURL[] = "/";
     uint32_t serialNumber = ESP.getChipId();
-    //char modelName[] = "GHDS100E";
-    const char *modelName = friendlyName;
+    char modelName[] = "GHDS100E";
+    // const char *modelName = friendlyName;
     const char *modelNumber = friendlyName;
     //char modelNumber[] = "911";
     //output.printf(ssdpTemplate,
@@ -1991,11 +1995,11 @@ void AsyncFSWebServer::serverInit()
   });
 #endif // HIDE_CONFIG
 
-  on("/ssdpxml", [this](AsyncWebServerRequest *request) {
-    if (!this->checkAuth(request))
-      return request->requestAuthentication();
-    this->send_ssdp_xml_page(request);
-  });
+  // on("/ssdpxml", [this](AsyncWebServerRequest *request) {
+  //   if (!this->checkAuth(request))
+  //     return request->requestAuthentication();
+  //   this->send_ssdp_xml_page(request);
+  // });
 
   //called when the url is not defined here
   //use it to load content from SPIFFS

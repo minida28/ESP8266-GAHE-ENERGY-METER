@@ -23,7 +23,7 @@
 #include <ArduinoJson.h>
 #include "Hash.h"
 
-// #define RELEASE  // Comment to enable debug output
+#define RELEASE  // Comment to enable debug output
 
 // #define DBG_OUTPUT_PORT Serial1
 // #define DEBUGPORT Serial1

@@ -121,6 +121,14 @@
         
         <div class="pure-u-1-2"><span class="pure-input-1">Last boot</span></div>
         <div class="pure-u-1-2"><span class="pure-input-1" id="lastboot"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Ping</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="ping"></span></div>
+        
+        <div class="pure-u-1-2"><span class="pure-input-1">Pong</span></div>
+        <div class="pure-u-1-2"><span class="pure-input-1" id="pong"></span></div>
+:
+
       </div>
 
     </div>
@@ -174,6 +182,8 @@ function reqListener ()
   document.getElementById("date").textContent = json.date;
   document.getElementById("uptime").textContent = json.uptime;
   document.getElementById("lastboot").textContent = json.lastboot;
+  document.getElementById("ping").textContent = json.ping_seq_num_send;
+  document.getElementById("pong").textContent = json.ping_seq_num_recv;
 }
 
 </script>
