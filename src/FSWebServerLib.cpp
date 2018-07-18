@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 #include "config.h"
+#include "modbus.h"
 #include "mqtt.h"
 
 uint16_t num;
@@ -400,12 +401,12 @@ void AsyncFSWebServer::sendTimeData()
     if (output.reserve(1024))
     {
       output.printf(buf,
-                    NTP.getTimeStr().c_str(),
-                    NTP.getDateStr().c_str(),
-                    NTP.getTimeDateString(NTP.getLastNTPSync()).c_str(),
-                    NTP.getUptimeString().c_str(),
-                    NTP.getTimeDateString(NTP.getLastBootTime()).c_str(),
-                    NTP.getDateStr().c_str());
+                    getTimeStr(),
+                    getDateStr(),
+                    getTimeStr(),
+                    getTimeStr(),
+                    getTimeStr(),
+                    getDateStr());
       DEBUGLOG("%s\n", output.c_str());
       _evs.send(output.c_str(), "timeDate", millis());
     }
@@ -451,7 +452,7 @@ void AsyncFSWebServer::sendTimeData()
     if (output.reserve(1024))
     {
       output.printf(buf,
-                    NTP.getUptimeString().c_str(),
+                    getTimeStr(),
                     WiFi.localIP().toString().c_str(),
                     bufVoltage,
                     bufAmpere,
@@ -575,8 +576,8 @@ void AsyncFSWebServer::begin(FS *fs)
   //WIFI INIT
   if (_configTime.syncinterval > 0)
   { // Enable NTP sync
-    NTP.begin(_configTime.ntpserver_0, _configTime.timezone / 10, _configTime.dst);
-    NTP.setInterval(15, _configTime.syncinterval * 60);
+    // NTP.begin(_configTime.ntpserver_0, TimezoneFloat(), _configTime.dst);
+    // NTP.setInterval(15, _configTime.syncinterval * 60);
   }
   // Register wifi Event to control connection LED
   onStationModeConnectedHandler = WiFi.onStationModeConnected([this](WiFiEventStationModeConnected data) {
@@ -1019,7 +1020,7 @@ bool AsyncFSWebServer::load_config_time()
   root.prettyPrintTo(DEBUGPORT);
 #endif
 
-  _configTime.timezone = root[FPSTR(pgm_timezone)];
+  // _configTime.timezone = root[FPSTR(pgm_timezone)];
   _configTime.dst = root[FPSTR(pgm_dst)];
   _configTime.enablertc = root[FPSTR(pgm_enablertc)];
   _configTime.syncinterval = root[FPSTR(pgm_syncinterval)];
@@ -1079,7 +1080,7 @@ bool AsyncFSWebServer::save_config_time()
   DynamicJsonBuffer jsonBuffer;
   JsonObject &json = jsonBuffer.createObject();
 
-  json[FPSTR(pgm_timezone)] = _configTime.timezone;
+  json[FPSTR(pgm_timezone)] = TimezoneFloat();
   json[FPSTR(pgm_dst)] = _configTime.dst;
   json[FPSTR(pgm_enablertc)] = _configTime.enablertc;
   json[FPSTR(pgm_syncinterval)] = _configTime.syncinterval;
@@ -1198,11 +1199,11 @@ void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *reque
   root[FPSTR(pgm_gateway)] = WiFi.gatewayIP().toString();
   root[FPSTR(pgm_netmask)] = WiFi.subnetMask().toString();
   root[FPSTR(pgm_dns)] = WiFi.dnsIP().toString();
-  root[FPSTR(pgm_lastsync)] = NTP.getTimeDateString(NTP.getLastNTPSync());
-  root[FPSTR(pgm_time)] = NTP.getTimeStr();
-  root[FPSTR(pgm_date)] = NTP.getDateStr();
-  root[FPSTR(pgm_uptime)] = NTP.getUptimeString();
-  root[FPSTR(pgm_lastboot)] = NTP.getTimeDateString(NTP.getLastBootTime());
+  root[FPSTR(pgm_lastsync)] = getLastSyncStr();
+  root[FPSTR(pgm_time)] = getTimeStr();
+  root[FPSTR(pgm_date)] = getDateStr();
+  root[FPSTR(pgm_uptime)] = getUptimeStr();
+  root[FPSTR(pgm_lastboot)] = getLastBootStr();
   root["ping_seq_num_send"] = ping_seq_num_send;
   root["ping_seq_num_recv"] = ping_seq_num_recv;
   root.printTo(*response);
@@ -1226,7 +1227,7 @@ void AsyncFSWebServer::send_NTP_configuration_values_html(AsyncWebServerRequest 
   DynamicJsonBuffer jsonBuffer;
   JsonObject &root = jsonBuffer.createObject();
 
-  root[FPSTR(pgm_timezone)] = _configTime.timezone;
+  root[FPSTR(pgm_timezone)] = TimezoneFloat();
   root[FPSTR(pgm_dst)] = _configTime.dst;
   root[FPSTR(pgm_enablertc)] = _configTime.enablertc;
   root[FPSTR(pgm_syncinterval)] = _configTime.syncinterval;
@@ -1402,7 +1403,7 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
     strlcpy(ipAddress, WiFi.localIP().toString().c_str(), sizeof(ipAddress) / sizeof(ipAddress[0]));
 
     output.printf(buf,
-                  NTP.getUptimeString().c_str(),
+                  getUptimeStr(),
                   ipAddress,
                   bufVoltage,
                   bufAmpere,
@@ -1459,7 +1460,7 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
 
       if (strncmp_P(name, pgm_timezone, len) == 0)
       {
-        _configTime.timezone = atoi(p->value().c_str());
+        // _configTime.timezone = atoi(p->value().c_str());
       }
       if (strncmp_P(name, pgm_dst, len) == 0)
       {
@@ -1495,10 +1496,10 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
 
     save_config_time();
 
-    NTP.setTimeZone(_configTime.timezone / 10);
-    NTP.setDayLight(_configTime.dst);
-    NTP.setInterval(_configTime.syncinterval * 60);
-    setTime(NTP.getTime()); //set time
+    // NTP.setTimeZone(_configTime.timezone / 10);
+    // NTP.setDayLight(_configTime.dst);
+    // NTP.setInterval(_configTime.syncinterval * 60);
+    // setTime(NTP.getTime()); //set time
 
     return;
   }

@@ -5,6 +5,7 @@
 
 
 #include "FSWebServerLib.h"
+// #include "timehelper.h"
 #include "config.h"
 #include "modbus.h"
 #include "mqtt.h"
@@ -130,7 +131,7 @@ bool save_system_info() {
   root[FPSTR(pgm_filename)] = fileName;
   root[FPSTR(pgm_compiledate)] = compileDate;
   root[FPSTR(pgm_compiletime)] = compileTime;
-  root[FPSTR(pgm_lastboot)] = NTP.getTimeDateString(NTP.getLastBootTime());
+  root[FPSTR(pgm_lastboot)] = getTimeStr();
   root[FPSTR(pgm_chipid)] = ESP.getChipId();
   root[FPSTR(pgm_cpufreq)] = ESP.getCpuFreqMHz();
   root[FPSTR(pgm_sketchsize)] = ESP.getSketchSize();
@@ -162,6 +163,8 @@ void setup()
   Serial.begin(115200);
   Serial.setDebugOutput(false);
   //Serial1.begin(115200);
+
+  timeSetup();
 
 #if defined(SOFTWARESERIAL)
   Serial.swap();
@@ -241,13 +244,15 @@ time_t utcTime;
 bool state500ms;
 bool state1000ms;
 bool tick500ms;
-bool tick1000ms;
+// bool tick1000ms;
 
 
 void pingFault(void) {}
 
 void loop()
 {
+  timeLoop();
+  
   static bool enablePing = true;
   if (WiFi.status() == WL_CONNECTED && enablePing)
   {
@@ -255,7 +260,7 @@ void loop()
     enablePing = false;
   }
   
-  utcTime = now();
+  utcTime = now;
 
   static unsigned long prevTimer500ms = 0;
   // static unsigned long prevTimer1000ms = 0;
@@ -266,7 +271,7 @@ void loop()
     unsigned long currMilis = millis();
     prevTimer500ms = currMilis;
     // prevTimer1000ms = currMilis;
-    tick1000ms = true;
+    // tick1000ms = true;
     prevDisplay = utcTime;
   }
 
@@ -303,7 +308,7 @@ void loop()
   modbus_update();
   modbus_loop();
   dht_loop();
-  //mqtt_loop();
+  mqtt_loop();
   //wifi_loop();
   //ESP.wdtFeed();
 

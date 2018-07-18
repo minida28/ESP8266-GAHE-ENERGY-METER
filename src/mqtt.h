@@ -76,6 +76,10 @@ extern  strConfigMqtt configMqtt;
 //
 void connectToMqtt();
 
+void MqttConnectedCb();
+
+void MqttDisconnectedCb();
+
 // -------------------------------------------------------------------
 // Perform the background MQTT operations. Must be called in the main
 // loop function
@@ -107,7 +111,7 @@ extern boolean mqtt_setup();
 
 extern boolean mqtt_reconnect();
 
-extern float wattThreshold;
+extern uint16_t wattThreshold;
 
 
 

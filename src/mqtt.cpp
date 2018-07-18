@@ -25,9 +25,16 @@
 
 #include <Arduino.h>
 
+#include "modbus.h"
 #include "mqtt.h"
 
-long reconnectInterval = 30000;
+bool mqttConnectedFlag = false;
+bool mqttDisconnectedFlag = false;
+bool mqttPublishFlag = false;
+bool mqttSubscribeFlag = false;
+bool mqttUnsubscribeFlag = false;
+
+uint32_t reconnectInterval = 30000;
 int clientTimeout = 0;
 int i = 0;
 
@@ -83,100 +90,22 @@ void connectToMqtt()
 
 void onMqttConnect(bool sessionPresent)
 {
-  DEBUGMQTT("Connected to MQTT.\n  Session present: %d\r\n");
-
-  File configFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
-  if (!configFile)
-  {
-    DEBUGMQTT("Failed to open config file\r\n");
-    return;
-  }
-
-  size_t size = configFile.size();
-  DEBUGMQTT("CONFIG_FILE_MQTT_PUBSUB file size: %d bytes\r\n", size);
-  if (size > 1024)
-  {
-    DEBUGMQTT("WARNING, file size maybe too large\r\n");
-
-    //configFile.close();
-
-    //return false;
-  }
-
-  // Allocate a buffer to store contents of the file.
-  std::unique_ptr<char[]> buf(new char[size]);
-
-  // We don't use String here because ArduinoJson library requires the input
-  // buffer to be mutable. If you don't use ArduinoJson, you may as well
-  // use configFile.readString instead.
-  configFile.readBytes(buf.get(), size);
-  configFile.close();
-  //DynamicJsonBuffer jsonBuffer(1024);
-  StaticJsonBuffer<1024> jsonBuffer;
-
-  JsonObject &json = jsonBuffer.parseObject(buf.get());
-
-  //  JsonVariant json;
-  //  json = jsonBuffer.parse(buf.get());
-
-  if (!json.success())
-  {
-    DEBUGMQTT("Failed to parse MQTT config file\r\n");
-    return;
-  }
-
-#ifndef RELEASEMQTT
-  String temp;
-  json.prettyPrintTo(temp);
-  Serial.println(temp);
-#endif
-
-  // publish 1
-  const char *publish_1_topic = json[FPSTR(pgm_publish_1)][0];
-  uint8_t publish_1_qos = json[FPSTR(pgm_publish_1)][1];
-  bool publish_1_retain = json[FPSTR(pgm_publish_1)][2];
-  const char *publish_1_payload = json[FPSTR(pgm_publish_1)][3];
-  uint16_t packetIdPub1 = mqttClient.publish(
-      publish_1_topic,  //topic
-      publish_1_qos,    //qos
-      publish_1_retain, //retain
-      publish_1_payload //payload
-  );
-  DEBUGMQTT(
-      "Publishing packetId: %d\n  topic:  %s\n QoS:  %d\n retain:  %d\n payload:  %s\r\n",
-      packetIdPub1, publish_1_topic, publish_1_qos, publish_1_retain, publish_1_topic);
-
-  // subscribe 1
-  const char *subscribe_1_topic = json[FPSTR(pgm_subscribe_1)][0];
-  uint8_t subscribe_1_qos = json[FPSTR(pgm_subscribe_1)][1];
-  uint16_t packetIdSub1 = mqttClient.subscribe(subscribe_1_topic, subscribe_1_qos);
-  DEBUGMQTT("Subscribing packetId: %d\n  topic: %s\n  QoS: %d\r\n", packetIdSub1, subscribe_1_topic, subscribe_1_qos);
-
-  //  //subscribe 2
-  //  const char* subscribe_2_topic = json[FPSTR(pgm_subscribe_2)][0];
-  //  uint8_t subscribe_2_qos = json[FPSTR(pgm_subscribe_2)][1];
-  //  uint16_t packetIdSub2 = mqttClient.subscribe(subscribe_2_topic, subscribe_2_qos);
-  //  DEBUGMQTT("Subscribing packetId: %d\n  topic: %s\n  QoS: %d\r\n"), packetIdSub2, subscribe_2_topic, subscribe_2_qos);
+  mqttConnectedFlag = true;
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 {
-  DEBUGMQTT("Disconnected from MQTT.\r\n");
-
-  if (WiFi.isConnected())
-  {
-    mqttReconnectTimer.once(5, connectToMqtt);
-  }
+  mqttDisconnectedFlag = true;
 }
 
 void onMqttSubscribe(uint16_t packetId, uint8_t qos)
 {
-  DEBUGMQTT("Subscribe acknowledged.\n  packetId: %d\n  qos: %d\r\n", packetId, qos);
+  mqttSubscribeFlag = true;
 }
 
 void onMqttUnsubscribe(uint16_t packetId)
 {
-  DEBUGMQTT("Unsubscribe acknowledged.\n  packetId: %d\r\n", packetId);
+  mqttUnsubscribeFlag = true;
 }
 
 void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total)
@@ -277,8 +206,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 
 void onMqttPublish(uint16_t packetId)
 {
-  DEBUGMQTT("Publish acknowledged.\r\n");
-  DEBUGMQTT("  packetId: %d\r\n", packetId);
+  mqttPublishFlag = true;
 }
 
 boolean mqtt_setup()
@@ -398,6 +326,127 @@ boolean mqtt_setup()
   return true;
 }
 
-// void mqtt_loop()
-// {
-// }
+void MqttConnectedCb()
+{
+  // DEBUGMQTT("Connected to MQTT.\r\n  Session present: %d\r\n");
+  DEBUGMQTT("Connected to MQTT.\r\n");
+
+  File configFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
+  if (!configFile)
+  {
+    DEBUGMQTT("Failed to open config file\r\n");
+    return;
+  }
+
+  size_t size = configFile.size();
+  DEBUGMQTT("CONFIG_FILE_MQTT_PUBSUB file size: %d bytes\r\n", size);
+  if (size > 1024)
+  {
+    DEBUGMQTT("WARNING, file size maybe too large\r\n");
+
+    //configFile.close();
+
+    //return false;
+  }
+
+  // Allocate a buffer to store contents of the file.
+  std::unique_ptr<char[]> buf(new char[size]);
+
+  // We don't use String here because ArduinoJson library requires the input
+  // buffer to be mutable. If you don't use ArduinoJson, you may as well
+  // use configFile.readString instead.
+  configFile.readBytes(buf.get(), size);
+  configFile.close();
+  //DynamicJsonBuffer jsonBuffer(1024);
+  StaticJsonBuffer<1024> jsonBuffer;
+
+  JsonObject &json = jsonBuffer.parseObject(buf.get());
+
+  //  JsonVariant json;
+  //  json = jsonBuffer.parse(buf.get());
+
+  if (!json.success())
+  {
+    DEBUGMQTT("Failed to parse MQTT config file\r\n");
+    return;
+  }
+
+#ifndef RELEASEMQTT
+  String temp;
+  json.prettyPrintTo(temp);
+  Serial.println(temp);
+#endif
+
+  // publish 1
+  const char *publish_1_topic = json[FPSTR(pgm_publish_1)][0];
+  uint8_t publish_1_qos = json[FPSTR(pgm_publish_1)][1];
+  bool publish_1_retain = json[FPSTR(pgm_publish_1)][2];
+  const char *publish_1_payload = json[FPSTR(pgm_publish_1)][3];
+  uint16_t packetIdPub1 = mqttClient.publish(
+      publish_1_topic,  //topic
+      publish_1_qos,    //qos
+      publish_1_retain, //retain
+      publish_1_payload //payload
+  );
+  DEBUGMQTT(
+      "Publishing packetId: %d\n  topic:  %s\n QoS:  %d\n retain:  %d\n payload:  %s\r\n",
+      packetIdPub1, publish_1_topic, publish_1_qos, publish_1_retain, publish_1_topic);
+
+  // subscribe 1
+  const char *subscribe_1_topic = json[FPSTR(pgm_subscribe_1)][0];
+  uint8_t subscribe_1_qos = json[FPSTR(pgm_subscribe_1)][1];
+  uint16_t packetIdSub1 = mqttClient.subscribe(subscribe_1_topic, subscribe_1_qos);
+  DEBUGMQTT("Subscribing packetId: %d\n  topic: %s\n  QoS: %d\r\n", packetIdSub1, subscribe_1_topic, subscribe_1_qos);
+
+  //  //subscribe 2
+  //  const char* subscribe_2_topic = json[FPSTR(pgm_subscribe_2)][0];
+  //  uint8_t subscribe_2_qos = json[FPSTR(pgm_subscribe_2)][1];
+  //  uint16_t packetIdSub2 = mqttClient.subscribe(subscribe_2_topic, subscribe_2_qos);
+  //  DEBUGMQTT("Subscribing packetId: %d\n  topic: %s\n  QoS: %d\r\n"), packetIdSub2, subscribe_2_topic, subscribe_2_qos);
+}
+
+void MqttDisconnectedCb()
+{
+  DEBUGMQTT("Disconnected from MQTT.\r\n");
+
+  if (WiFi.isConnected())
+  {
+    mqttReconnectTimer.once(5, connectToMqtt);
+  }
+}
+
+void mqtt_loop()
+{
+  if (mqttConnectedFlag)
+  {
+    mqttConnectedFlag = false;
+    MqttConnectedCb();
+  }
+
+  if (mqttDisconnectedFlag)
+  {
+    mqttDisconnectedFlag = false;
+    MqttDisconnectedCb();
+  }
+
+  if (mqttPublishFlag)
+  {
+    mqttPublishFlag = false;
+    DEBUGMQTT("Publish acknowledged.\r\n");
+    // DEBUGMQTT("  packetId: %d\r\n", packetId);
+  }
+
+  if (mqttSubscribeFlag)
+  {
+    mqttSubscribeFlag = false;
+    // DEBUGMQTT("Subscribe acknowledged.\n  packetId: %d\n  qos: %d\r\n", packetId, qos);
+    DEBUGMQTT("Subscribe acknowledged.\r\n");
+  }
+
+  if (mqttUnsubscribeFlag)
+  {
+    mqttUnsubscribeFlag = false;
+    // DEBUGMQTT("Unsubscribe acknowledged.\n  packetId: %d\r\n", packetId);
+    DEBUGMQTT("Unsubscribe acknowledged.\r\n");
+  }
+}

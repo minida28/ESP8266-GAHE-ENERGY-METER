@@ -34,10 +34,13 @@
 #include <ESP8266SSDP.h>
 #include <ESP8266NetBIOS.h>
 #include <StreamString.h>
+#include <time.h>
 
 #include "FSWebServerLib.h"
 #include "gahe1progmem.h"
 
+#include "timehelper.h"
+#include "sntphelper.h"
 #include "PingAlive.h"
 
 #define PRINTPORT Serial1

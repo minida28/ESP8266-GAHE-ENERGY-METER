@@ -11,8 +11,8 @@
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
-#include <TimeLib.h>
-#include <NtpClientLib.h>
+// #include <TimeLib.h>
+// #include <NtpClientLib.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ESP8266mDNS.h>
@@ -22,6 +22,7 @@
 //#include "AsyncJson.h"
 #include <ArduinoJson.h>
 #include "Hash.h"
+
 
 #define RELEASE  // Comment to enable debug output
 
@@ -59,17 +60,17 @@ typedef struct
 
 } strConfig;
 
-typedef struct
-{
-  int8_t timezone = 70;
-  bool dst = false;
-  bool enablertc = true;
-  uint32_t syncinterval = 600;
-  bool enablentp = true;
-  char ntpserver_0[48] = "0.id.pool.ntp.org";
-  char ntpserver_1[48] = "0.asia.pool.ntp.org";
-  char ntpserver_2[48] = "192.168.10.1";
-} strConfigTime;
+// typedef struct
+// {
+//   int8_t timezone = 70;
+//   bool dst = false;
+//   bool enablertc = true;
+//   uint32_t syncinterval = 600;
+//   bool enablentp = true;
+//   char ntpserver_0[48] = "0.id.pool.ntp.org";
+//   char ntpserver_1[48] = "0.asia.pool.ntp.org";
+//   char ntpserver_2[48] = "192.168.10.1";
+// } strConfigTime;
 
 typedef struct
 {
@@ -95,7 +96,7 @@ public:
 
 protected:
   strConfig _config; // General and WiFi configuration
-  strConfigTime _configTime;
+  // strConfigTime _configTime;
   strApConfig _apConfig; // Static AP config settings
   strHTTPAuth _httpAuth;
   FS *_fs;
@@ -188,22 +189,5 @@ extern uint16_t num;
 //extern char bufXML[1000];
 //extern void handleXML();
 extern String millis2time();
-extern char bufwattThreshold[5];
-extern char bufVoltage[10];
-extern char bufAmpere[10];
-extern char bufWatt[10];
-extern char bufVar[10];
-extern char bufFrequency[10];
-extern char bufPstkwh[10];
-extern char bufPstkvarh[10];
-extern char bufNgtkvarh[10];
-extern char bufPowerFactor[10];
-extern char bufApparentPower[10];
-extern char bufUnk2[10];
-extern char bufRequestsPACKET3[10];
-extern char bufSuccessful_requestsPACKET3[10];
-extern char bufFailed_requestsPACKET3[10];
-extern char bufException_errorsPACKET3[10];
-extern char bufConnectionPACKET3[10];
 
 #endif // _FSWEBSERVERLIB_h

@@ -92,15 +92,15 @@ char bufApparentPower[10];
 char bufUnk2[10];
 
 // Set initial max Watt Threshold value.
-// For 10 Amps MCB, I suggested 2400 watt (around 11A) as the initial value.
-float wattThreshold = 2400.0;
+// For 10 Amps MCB, suggested value is 2400 watt (around 11A) as the initial value.
+uint16_t wattThreshold = 2400;
 
 // Variable to store updated Watt Threshold value
 // and set initial value equal to initial value of max watt Threshold.
-float lastwattThreshold = wattThreshold;
+uint16_t lastwattThreshold = wattThreshold;
 
 // Buffer for Watt Threshold
-char bufwattThreshold[5];
+char bufwattThreshold[10];
 
 unsigned long lastMsg = 0;
 unsigned long lastEmonCMSMsg;
@@ -156,6 +156,16 @@ void modbus_setup()
 
 void modbus_loop()
 {
+  static uint32_t timerEverySecond = 0;
+  if (millis() >= timerEverySecond+1000)
+  {
+    timerEverySecond = millis();
+  }
+  else
+  {
+    return;
+  }
+  
   /* Reset the ESP8266 if no Modbus connections for more than 2 minutes */
 
   if (packets[PACKET1].connection == 1 && packets[PACKET2].connection == 1 && packets[PACKET3].connection == 1 && packets[PACKET6].connection == 1)
@@ -185,7 +195,7 @@ void modbus_loop()
   //  modbus_construct(&packets[PACKET14], 3, READ_INPUT_REGISTERS, 546, 1, 24);  // read Minute & Second
 
   //update values if new request based on Watt request [PACKET3]
-  static uint16_t numReq_old;
+  static uint32_t numReq_old;
   if (packets[PACKET3].requests != numReq_old)
   {
 
@@ -193,18 +203,21 @@ void modbus_loop()
     numReq_old = packets[PACKET3].requests;
 
     //convert packet status to char array for later use
-    dtostrf(packets[PACKET3].requests, 1, 0, bufRequestsPACKET3);
-    dtostrf(packets[PACKET3].successful_requests, 1, 0, bufSuccessful_requestsPACKET3);
-    dtostrf(packets[PACKET3].failed_requests, 1, 0, bufFailed_requestsPACKET3);
-    dtostrf(packets[PACKET3].exception_errors, 1, 0, bufException_errorsPACKET3);
-    dtostrf(packets[PACKET3].connection, 1, 0, bufConnectionPACKET3);
+    dtostrf(packets[PACKET3].requests, 0, 0, bufRequestsPACKET3);
+    dtostrf(packets[PACKET3].successful_requests, 0, 0, bufSuccessful_requestsPACKET3);
+    dtostrf(packets[PACKET3].failed_requests, 0, 0, bufFailed_requestsPACKET3);
+    dtostrf(packets[PACKET3].exception_errors, 0, 0, bufException_errorsPACKET3);
+    dtostrf(packets[PACKET3].connection, 0, 0, bufConnectionPACKET3);
+  }
+  else
+  {
+    return;
   }
 
   if (packets[PACKET2].successful_requests != oldrequestPACKET2 &&
       packets[PACKET3].successful_requests != oldrequestPACKET3 &&
       packets[PACKET6].successful_requests != oldrequestPACKET6)
   {
-
     //update old values
     oldrequestPACKET2 = packets[PACKET2].successful_requests;
     oldrequestPACKET3 = packets[PACKET3].successful_requests;
@@ -272,321 +285,332 @@ void modbus_loop()
 
     /* Convert all floats into string prior to publish to MQTT broker */
 
-    dtostrf(Voltage, 1, 1, bufVoltage);             /* Voltage */
-    dtostrf(Ampere, 1, 2, bufAmpere);               /* Ampere */
-    dtostrf(Watt, 1, 1, bufWatt);                   /* Wattage */
-    dtostrf(Var, 1, 1, bufVar);                     /* Positive Var */
-    dtostrf(Frequency, 1, 1, bufFrequency);         /* Frequency Hz */
-    dtostrf(Pstkwh, 1, 1, bufPstkwh);               /* Positive kWh */
-    dtostrf(Pstkvarh, 1, 1, bufPstkvarh);           /* Positive kVarh */
-    dtostrf(Ngtkvarh, 1, 1, bufNgtkvarh);           /* Negative kVarh */
-    dtostrf(PowerFactor, 1, 1, bufPowerFactor);     /* Power Factor */
-    dtostrf(ApparentPower, 1, 1, bufApparentPower); /* Apparent Power */
-    dtostrf(Unk2, 1, 1, bufUnk2);                   /* Unk2 */
+    dtostrf(Voltage, 0, 1, bufVoltage);             /* Voltage */
+    dtostrf(Ampere, 0, 2, bufAmpere);               /* Ampere */
+    dtostrf(Watt, 0, 1, bufWatt);                   /* Wattage */
+    dtostrf(Var, 0, 1, bufVar);                     /* Positive Var */
+    dtostrf(Frequency, 0, 1, bufFrequency);         /* Frequency Hz */
+    dtostrf(Pstkwh, 0, 1, bufPstkwh);               /* Positive kWh */
+    dtostrf(Pstkvarh, 0, 1, bufPstkvarh);           /* Positive kVarh */
+    dtostrf(Ngtkvarh, 0, 1, bufNgtkvarh);           /* Negative kVarh */
+    dtostrf(PowerFactor, 0, 1, bufPowerFactor);     /* Power Factor */
+    dtostrf(ApparentPower, 0, 1, bufApparentPower); /* Apparent Power */
+    dtostrf(Unk2, 0, 1, bufUnk2);                   /* Unk2 */
+  }
+  else
+  {
+    return;
+  }
 
-    // Check if Watt Threshold has been changed or buffer is empty.
-    // If yes, update the last watt Threshold and its buffer value
-    if (wattThreshold != lastwattThreshold || strlen(bufwattThreshold) == 0)
+  // Check if Watt Threshold has been changed or buffer is empty.
+  // If yes, update the last watt Threshold and its buffer value
+  if (wattThreshold != lastwattThreshold || strlen(bufwattThreshold) == 0)
+  {
+    lastwattThreshold = wattThreshold;
+    dtostrf(wattThreshold, 0, 0, bufwattThreshold);
+  }
+
+  // -------------------------------------------------------------------
+  // PROCESS SPIFFS & ArduinoJson
+  // -------------------------------------------------------------------
+
+  //process only if websocket has client or MQTT is connected
+  if (WiFi.status() == WL_CONNECTED || (ws.hasClient(num) || mqttClient.connected()))
+  {
+
+    File pubSubJsonFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
+    if (!pubSubJsonFile)
     {
-
-      lastwattThreshold = wattThreshold;
-      dtostrf(wattThreshold, 1, 1, bufwattThreshold);
+      PRINT("Failed to open PUBSUBJSON_FILE file\r\n");
+      pubSubJsonFile.close();
+      return;
     }
 
-    // -------------------------------------------------------------------
-    // PROCESS SPIFFS & ArduinoJson
-    // -------------------------------------------------------------------
-
-    //process only if websocket has client or MQTT is connected
-    if (WiFi.status() == WL_CONNECTED || (ws.hasClient(num) || mqttClient.connected()))
+    size_t size = pubSubJsonFile.size();
+    PRINT("PUBSUBJSON_FILE file size: %d bytes\r\n", size);
+    if (size > 1024)
     {
-
-      File pubSubJsonFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
-      if (!pubSubJsonFile)
-      {
-        PRINT("Failed to open PUBSUBJSON_FILE file\r\n");
-        return;
-      }
-
-      size_t size = pubSubJsonFile.size();
-      PRINT("PUBSUBJSON_FILE file size: %d bytes\r\n", size);
-      if (size > 1024)
-      {
-        PRINT("WARNING, file size maybe too large\r\n");
-      }
-
-      // Create a buffer to store contents of the file
-      char buf[size];
-
-      //copy file to buffer & add termination character
-      pubSubJsonFile.readBytes(buf, size);
-      buf[size] = '\0';
-
-      //close the file, save your memory, keep healthy :-)
+      PRINT("WARNING, file size maybe too large\r\n");
       pubSubJsonFile.close();
+      return;
+    }
 
-      StaticJsonBuffer<1024> jsonBuffer;
-      JsonObject &root = jsonBuffer.parseObject(buf);
+    // Create a buffer to store contents of the file
+    // char buf[size];
 
-      if (!root.success())
+    //copy file to buffer & add termination character
+    // pubSubJsonFile.readBytes(buf, size);
+    // buf[size] = '\0';
+
+    //close the file, save your memory, keep healthy :-)
+    // pubSubJsonFile.close();
+
+    StaticJsonBuffer<1024> jsonBuffer;
+    JsonObject &root = jsonBuffer.parseObject(pubSubJsonFile);
+
+    //close the file, save your memory, keep healthy :-)
+    pubSubJsonFile.close();
+
+    if (!root.success())
+    {
+      PRINT("Failed to parse PUBSUBJSON_FILE file\r\n");
+      return;
+    }
+
+    JsonArray &pub_param = root[FPSTR(pgm_pub_param)];
+
+    unsigned long timer1;
+
+    //publish watt and and ampere readings in higher publish rate (publish every 1 second)
+    //if watt is above wattThreshold
+    if (atof(bufWatt) > wattThreshold)
+    {
+      timer1 = 1000;
+      oldWatt = atof(bufWatt);
+    }
+    else
+    {
+      timer1 = 10000;
+      if (oldWatt > wattThreshold)
       {
-        PRINT("Failed to parse PUBSUBJSON_FILE file\r\n");
-        return;
-      }
-
-      JsonArray &pub_param = root[FPSTR(pgm_pub_param)];
-
-      unsigned long timer1;
-
-      //publish watt and and ampere readings in higher publish rate (publish every 1 second)
-      //if watt is above wattThreshold
-      if (Watt > wattThreshold)
-      {
-        timer1 = 1000;
-        oldWatt = Watt;
-      }
-      else
-      {
-        timer1 = 10000;
-        if (oldWatt > wattThreshold)
+        oldWatt = atof(bufWatt);
+        if (mqttClient.connected())
         {
-          oldWatt = Watt;
-          if (mqttClient.connected())
-          {
-            //const char* wattTopic = PSTR("/rumah/sts/kwh1/watt");
-            //const char* ampereTopic = PSTR("/rumah/sts/kwh1/ampere");
+          //const char* wattTopic = PSTR("/rumah/sts/kwh1/watt");
+          //const char* ampereTopic = PSTR("/rumah/sts/kwh1/ampere");
+          char wattTopic[] = "/rumah/sts/kwh1/watt";
+          char ampereTopic[] = "/rumah/sts/kwh1/ampere";
 
-            mqttClient.publish("/rumah/sts/kwh1/watt", 0, 0, bufWatt);
-            mqttClient.publish("/rumah/sts/kwh1/ampere", 0, 0, bufAmpere);
-          }
+          mqttClient.publish(wattTopic, 0, 0, bufWatt);
+          mqttClient.publish(ampereTopic, 0, 0, bufAmpere);
         }
       }
+    }
 
-      static unsigned long lastTimer;
-      if (millis() - lastTimer >= timer1)
+    static unsigned long lastTimer;
+    if (millis() - lastTimer >= timer1)
+    {
+      lastTimer = millis(); //  Update time
+
+      uint8_t lenBaseTopic = strlen(root[FPSTR(pgm_pub_default_basetopic)]);
+
+      const char *bt = root[FPSTR(pgm_pub_default_basetopic)];
+
+      for (int i = 0; i < 11; i++)
       {
-        lastTimer = millis(); //  Update time
 
-        uint8_t lenBaseTopic = strlen(root[FPSTR(pgm_pub_default_basetopic)]);
+        char cat[lenBaseTopic + 1];
 
-        const char *bt = root[FPSTR(pgm_pub_default_basetopic)];
+        strlcpy(cat, bt, sizeof(cat) / sizeof(cat[0]));
 
-        for (int i = 0; i < 11; i++)
-        {
+        const char *pr = pub_param[i];
 
-          char cat[lenBaseTopic + 1];
+        strcat(cat, pr);
 
-          strlcpy(cat, bt, sizeof(cat) / sizeof(cat[0]));
-
-          const char *pr = pub_param[i];
-
-          strcat(cat, pr);
-
-          //          if (ws.hasClient(num)) {
-          //            ws.text(num, cat);
-          //          }
-
-          if (mqttClient.connected())
-          {
-            if (i == 0)
-            {
-              if (!isnan(Voltage))
-              {
-                mqttClient.publish(cat, 0, 0, bufVoltage);
-              }
-            }
-            if (i == 1)
-            {
-              mqttClient.publish(cat, 0, 0, bufAmpere);
-            }
-            if (i == 2)
-            {
-              mqttClient.publish(cat, 0, 0, bufWatt);
-            }
-            if (i == 3)
-            {
-              mqttClient.publish(cat, 0, 0, bufVar);
-            }
-            if (i == 4)
-            {
-              mqttClient.publish(cat, 0, 0, bufFrequency);
-            }
-            if (i == 5)
-            {
-              if (Pstkwh >= 0.01 || !isnan(Pstkwh))
-              {
-                mqttClient.publish(cat, 0, 0, bufPstkwh);
-              }
-            }
-            if (i == 6)
-            {
-              mqttClient.publish(cat, 0, 0, bufPstkvarh);
-            }
-            if (i == 7)
-            {
-              mqttClient.publish(cat, 0, 0, bufNgtkvarh);
-            }
-            if (i == 8)
-            {
-              mqttClient.publish(cat, 0, 0, bufPowerFactor);
-            }
-            if (i == 9)
-            {
-              mqttClient.publish(cat, 0, 0, bufApparentPower);
-            }
-            if (i == 10)
-            {
-              mqttClient.publish(cat, 0, 0, bufUnk2);
-            }
-          }
-        }
-      }
-
-      // -------------------------------------------------------------------
-      // 1 SECOND
-      // -------------------------------------------------------------------
-      static unsigned long lastTimer1s;
-      if (millis() - lastTimer1s >= 1000)
-      {
-        lastTimer1s = millis();
+        //          if (ws.hasClient(num)) {
+        //            ws.text(num, cat);
+        //          }
 
         if (mqttClient.connected())
         {
-          StaticJsonBuffer<1024> jsonBuffer;
-          JsonObject &root = jsonBuffer.createObject();
-
-          root[FPSTR(pgm_voltage)] = bufVoltage;
-          root[FPSTR(pgm_ampere)] = bufAmpere;
-          root[FPSTR(pgm_watt)] = bufWatt;
-          root[FPSTR(pgm_var)] = bufVar;
-          root[FPSTR(pgm_frequency)] = bufFrequency;
-          root[FPSTR(pgm_pstkwh)] = bufPstkwh;
-          root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
-          root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
-          root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
-          root[FPSTR(pgm_apparentpower)] = bufApparentPower;
-          root[FPSTR(pgm_unk2)] = bufUnk2;
-
-          size_t len = root.measureLength();
-
-          char buf[len];
-          root.printTo(buf, len + 1);
-
-          mqttClient.publish("ESP13579541/meterreading/1s", 2, 0, buf);
-        }
-      }
-
-      // -------------------------------------------------------------------
-      // 10 SECOND
-      // -------------------------------------------------------------------
-
-      static unsigned long lastTimer10s;
-      if (millis() - lastTimer10s >= 10000)
-      {
-
-        lastTimer10s = millis(); //  Update time
-
-        //measure base topic length
-        uint8_t lenBaseTopic = strlen(root[FPSTR(pgm_pub_10s_basetopic)]);
-
-        //pointer to base topic
-        const char *bt = root[FPSTR(pgm_pub_10s_basetopic)];
-
-        for (int i = 0; i < 11; i++)
-        {
-
-          //create buffer to hold the result of concat
-          char cat[lenBaseTopic + 1];
-
-          //copy to buffer
-          strlcpy(cat, bt, sizeof(cat) / sizeof(cat[0]));
-
-          //pointer to param
-          const char *pr = pub_param[i];
-
-          //concat param to buffer
-          strcat(cat, pr);
-
-          //          if (ws.hasClient(num)) {
-          //            //ws.text(num, cat);
-          //          }
-
-          if (mqttClient.connected())
+          if (i == 0)
           {
-            if (i == 0)
+            if (!isnan(atof(bufVoltage)) || atoi(bufVoltage) == 0)
             {
-              if (!isnan(Voltage))
-              {
-                mqttClient.publish(cat, 0, 0, bufVoltage);
-              }
+              mqttClient.publish(cat, 0, 0, bufVoltage);
             }
-            if (i == 1)
+          }
+          if (i == 1)
+          {
+            mqttClient.publish(cat, 0, 0, bufAmpere);
+          }
+          if (i == 2)
+          {
+            mqttClient.publish(cat, 0, 0, bufWatt);
+          }
+          if (i == 3)
+          {
+            mqttClient.publish(cat, 0, 0, bufVar);
+          }
+          if (i == 4)
+          {
+            mqttClient.publish(cat, 0, 0, bufFrequency);
+          }
+          if (i == 5)
+          {
+            if (atof(bufPstkwh) >= 0.01 || !isnan(atof(bufPstkwh)))
             {
-              mqttClient.publish(cat, 0, 0, bufAmpere);
+              mqttClient.publish(cat, 0, 0, bufPstkwh);
             }
-            if (i == 2)
-            {
-              mqttClient.publish(cat, 0, 0, bufWatt);
-            }
-            if (i == 3)
-            {
-              mqttClient.publish(cat, 0, 0, bufVar);
-            }
-            if (i == 4)
-            {
-              mqttClient.publish(cat, 0, 0, bufFrequency);
-            }
-            if (i == 5)
-            {
-              if (Pstkwh >= 0.01 || !isnan(Pstkwh))
-              {
-                mqttClient.publish(cat, 0, 0, bufPstkwh);
-              }
-            }
-            if (i == 6)
-            {
-              mqttClient.publish(cat, 0, 0, bufPstkvarh);
-            }
-            if (i == 7)
-            {
-              mqttClient.publish(cat, 0, 0, bufNgtkvarh);
-            }
-            if (i == 8)
-            {
-              mqttClient.publish(cat, 0, 0, bufPowerFactor);
-            }
-            if (i == 9)
-            {
-              mqttClient.publish(cat, 0, 0, bufApparentPower);
-            }
-            if (i == 10)
-            {
-              mqttClient.publish(cat, 0, 0, bufUnk2);
-            }
+          }
+          if (i == 6)
+          {
+            mqttClient.publish(cat, 0, 0, bufPstkvarh);
+          }
+          if (i == 7)
+          {
+            mqttClient.publish(cat, 0, 0, bufNgtkvarh);
+          }
+          if (i == 8)
+          {
+            mqttClient.publish(cat, 0, 0, bufPowerFactor);
+          }
+          if (i == 9)
+          {
+            mqttClient.publish(cat, 0, 0, bufApparentPower);
+          }
+          if (i == 10)
+          {
+            mqttClient.publish(cat, 0, 0, bufUnk2);
           }
         }
       }
+    }
 
-      // -------------------------------------------------------------------
-      // 20 SECOND
-      // -------------------------------------------------------------------
+    // -------------------------------------------------------------------
+    // 1 SECOND
+    // -------------------------------------------------------------------
+    static unsigned long lastTimer1s;
+    if (millis() - lastTimer1s >= 1000)
+    {
+      lastTimer1s = millis();
 
-      static unsigned long lastTimer15s = millis();
-      if (millis() - lastTimer15s >= 20000)
+      if (mqttClient.connected())
+      {
+        StaticJsonBuffer<1024> jsonBuffer;
+        JsonObject &root = jsonBuffer.createObject();
+
+        root[FPSTR(pgm_voltage)] = bufVoltage;
+        root[FPSTR(pgm_ampere)] = bufAmpere;
+        root[FPSTR(pgm_watt)] = bufWatt;
+        root[FPSTR(pgm_var)] = bufVar;
+        root[FPSTR(pgm_frequency)] = bufFrequency;
+        root[FPSTR(pgm_pstkwh)] = bufPstkwh;
+        root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
+        root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
+        root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
+        root[FPSTR(pgm_apparentpower)] = bufApparentPower;
+        root[FPSTR(pgm_unk2)] = bufUnk2;
+
+        size_t len = root.measureLength();
+
+        char buf[len];
+        root.printTo(buf, len + 1);
+
+        mqttClient.publish("ESP13579541/meterreading/1s", 2, 0, buf);
+      }
+    }
+
+    // -------------------------------------------------------------------
+    // 10 SECOND
+    // -------------------------------------------------------------------
+
+    static unsigned long lastTimer10s;
+    if (millis() - lastTimer10s >= 10000)
+    {
+
+      lastTimer10s = millis(); //  Update time
+
+      //measure base topic length
+      uint8_t lenBaseTopic = strlen(root[FPSTR(pgm_pub_10s_basetopic)]);
+
+      //pointer to base topic
+      const char *bt = root[FPSTR(pgm_pub_10s_basetopic)];
+
+      for (int i = 0; i < 11; i++)
       {
 
-        lastTimer15s = millis(); //  Update time
+        //create buffer to hold the result of concat
+        char cat[lenBaseTopic + 1];
 
-        static bool updateToCloud;
-        if (packets[PACKET6].successful_requests >= 10)
+        //copy to buffer
+        strlcpy(cat, bt, sizeof(cat) / sizeof(cat[0]));
+
+        //pointer to param
+        const char *pr = pub_param[i];
+
+        //concat param to buffer
+        strcat(cat, pr);
+
+        //          if (ws.hasClient(num)) {
+        //            //ws.text(num, cat);
+        //          }
+
+        if (mqttClient.connected())
         {
-          updateToCloud = true;
+          if (i == 0)
+          {
+            if (!isnan(atof(bufVoltage)) || atoi(bufVoltage) == 0)
+            {
+              mqttClient.publish(cat, 0, 0, bufVoltage);
+            }
+          }
+          if (i == 1)
+          {
+            mqttClient.publish(cat, 0, 0, bufAmpere);
+          }
+          if (i == 2)
+          {
+            mqttClient.publish(cat, 0, 0, bufWatt);
+          }
+          if (i == 3)
+          {
+            mqttClient.publish(cat, 0, 0, bufVar);
+          }
+          if (i == 4)
+          {
+            mqttClient.publish(cat, 0, 0, bufFrequency);
+          }
+          if (i == 5)
+          {
+            if (atof(bufPstkwh) >= 0.01 || !isnan(atof(bufPstkwh)))
+            {
+              mqttClient.publish(cat, 0, 0, bufPstkwh);
+            }
+          }
+          if (i == 6)
+          {
+            mqttClient.publish(cat, 0, 0, bufPstkvarh);
+          }
+          if (i == 7)
+          {
+            mqttClient.publish(cat, 0, 0, bufNgtkvarh);
+          }
+          if (i == 8)
+          {
+            mqttClient.publish(cat, 0, 0, bufPowerFactor);
+          }
+          if (i == 9)
+          {
+            mqttClient.publish(cat, 0, 0, bufApparentPower);
+          }
+          if (i == 10)
+          {
+            mqttClient.publish(cat, 0, 0, bufUnk2);
+          }
         }
-        if (updateToCloud && WiFi.status() == WL_CONNECTED)
-        {
-          runAsyncClientEmoncms();
-          runAsyncClientThingspeak();
-        }
+      }
+    }
+
+    // -------------------------------------------------------------------
+    // 20 SECOND
+    // -------------------------------------------------------------------
+
+    static unsigned long lastTimer15s = millis();
+    if (millis() - lastTimer15s >= 20000)
+    {
+
+      lastTimer15s = millis(); //  Update time
+
+      static bool updateToCloud;
+      if (packets[PACKET6].successful_requests >= 10)
+      {
+        updateToCloud = true;
+      }
+      if (updateToCloud && WiFi.status() == WL_CONNECTED)
+      {
+        // runAsyncClientEmoncms();
+        // runAsyncClientThingspeak();
       }
     }
   }
