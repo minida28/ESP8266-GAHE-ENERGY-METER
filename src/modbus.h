@@ -1,7 +1,7 @@
 #ifndef _MYMODBUS_H
 #define _MYMODBUS_H
 
-#include <SimpleModbusMaster.h>
+#include "SimpleModbusMaster.h"
 //#include <SoftwareSerial.h>
 #include "config.h"
 
