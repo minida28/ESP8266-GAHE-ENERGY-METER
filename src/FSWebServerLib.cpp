@@ -633,15 +633,15 @@ void AsyncFSWebServer::begin(FS *fs)
 
   MDNS.addService("http", "tcp", 80);
 
-  // NBNS.begin(_config.hostname);
+  NBNS.begin(_config.hostname);
 
-  //SSDP.setSchemaURL("ssdpxml");
-  // SSDP.setSchemaURL("ssdpxml");
-  // SSDP.setHTTPPort(80);
-  // SSDP.setDeviceType("upnp:rootdevice");
-  // //  SSDP.setModelName(_config.hostname.c_str());
-  // //  SSDP.setModelNumber(FPSTR(modelNumber));
-  // SSDP.begin();
+  SSDP.setSchemaURL("ssdpxml");
+  SSDP.setSchemaURL("ssdpxml");
+  SSDP.setHTTPPort(80);
+  SSDP.setDeviceType("upnp:rootdevice");
+  //  SSDP.setModelName(_config.hostname.c_str());
+  //  SSDP.setModelNumber(FPSTR(modelNumber));
+  SSDP.begin();
 
   serverInit(); // Configure and start Web server
 
@@ -1996,11 +1996,11 @@ void AsyncFSWebServer::serverInit()
   });
 #endif // HIDE_CONFIG
 
-  // on("/ssdpxml", [this](AsyncWebServerRequest *request) {
-  //   if (!this->checkAuth(request))
-  //     return request->requestAuthentication();
-  //   this->send_ssdp_xml_page(request);
-  // });
+  on("/ssdpxml", [this](AsyncWebServerRequest *request) {
+    if (!this->checkAuth(request))
+      return request->requestAuthentication();
+    this->send_ssdp_xml_page(request);
+  });
 
   //called when the url is not defined here
   //use it to load content from SPIFFS

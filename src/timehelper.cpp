@@ -111,7 +111,7 @@ char *getLastBootStr()
     time_t lastBoot = now - uptime;
     static char buf[30];
     struct tm *tm = localtime(&lastBoot);
-    sprintf(buf, "%s", asctime(tm));
+    sprintf_P(buf, PSTR("%s"), asctime(tm));
 
     return buf;
 }
@@ -136,7 +136,7 @@ char *getUptimeStr()
 
     static char buf[30];
     //365 days 23:23:23
-    sprintf(buf, "%u days %02d:%02d:%02d", days, hours, minutes, seconds);
+    sprintf_P(buf, PSTR("%u days %02d:%02d:%02d"), days, hours, minutes, seconds);
 
     return buf;
 }
@@ -161,19 +161,19 @@ char *getLastSyncStr()
     static char buf[30];
     if (days > 0)
     {
-        sprintf(buf, "%u day %d hr ago", days, hours);
+        sprintf_P(buf, PSTR("%u day %d hr ago"), days, hours);
     }
     else if (hours > 0)
     {
-        sprintf(buf, "%d hr %d min ago", hours, minutes);
+        sprintf_P(buf, PSTR("%d hr %d min ago"), hours, minutes);
     }
     else if (minutes > 0)
     {
-        sprintf(buf, "%d min ago", minutes);
+        sprintf_P(buf, PSTR("%d min ago"), minutes);
     }
     else
     {
-        sprintf(buf, "%d sec ago", seconds);
+        sprintf_P(buf, PSTR("%d sec ago"), seconds);
     }
 
     return buf;
@@ -199,7 +199,7 @@ char *getNextSyncStr()
     seconds = tm->tm_sec;
 
     static char buf[30];
-    sprintf(buf, "%u days %02d:%02d:%02d", days, hours, minutes, seconds);
+    sprintf_P(buf, PSTR("%u days %02d:%02d:%02d"), days, hours, minutes, seconds);
 
     return buf;
 }
@@ -208,11 +208,12 @@ void timeSetup()
 {
     // Synchronize time useing SNTP. This is necessary to verify that
     // the TLS certificates offered by the server are currently valid.
-    Serial.print("Setting time using SNTP");
+    DEBUGLOG("Setting time using SNTP\r\n");
     settimeofday_cb(time_is_set);
 
     configTime(0, 0, "pool.ntp.org", "192.168.10.1");
     configTZ(TZ_Asia_Jakarta);
+    // configTZ(TZ_Asia_Kathmandu);
 }
 
 void timeLoop()
