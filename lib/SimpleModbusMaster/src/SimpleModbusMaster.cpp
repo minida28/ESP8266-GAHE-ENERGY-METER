@@ -13,7 +13,7 @@
 #define WAITING_FOR_TURNAROUND 3
 
 #if defined(ESP8266)
-#define BUFFER_SIZE 128
+#define BUFFER_SIZE 256
 #else
 #define BUFFER_SIZE 64
 #endif
@@ -28,11 +28,11 @@ unsigned char TxEnablePin;
 // This is limited to the serial buffer of 64 bytes
 unsigned char frame[BUFFER_SIZE]; 
 unsigned char buffer;
-long timeout; // timeout interval
-long polling; // turnaround delay interval
+unsigned long timeout; // timeout interval
+unsigned long polling; // turnaround delay interval
 unsigned int T1_5; // inter character time out in microseconds
 unsigned int frameDelay; // frame time out in microseconds
-long delayStart; // init variable for turnaround and timeout delay
+unsigned long delayStart; // init variable for turnaround and timeout delay
 unsigned int total_no_of_packets; 
 Packet* packetArray; // packet starting address
 Packet* packet; // current packet
@@ -420,10 +420,10 @@ void modbus_configure(SoftwareSerial* SerialPort,
 #else
 void modbus_configure(HardwareSerial* SerialPort,
 #endif  
-											long baud,
+											unsigned long baud,
 											unsigned char byteFormat,
-											long _timeout, 
-											long _polling, 
+											unsigned long _timeout, 
+											unsigned long _polling, 
 											unsigned char _retry_count, 
 											unsigned char _TxEnablePin, 
 											Packet* _packets, 

@@ -46,7 +46,7 @@ void runAsyncClientEmoncms()
     client->onData([](void *arg, AsyncClient *c, void *data, size_t len) {
       DEBUGLOG("\r\nData: ");
       DEBUGLOG("%d", len);
-      uint8_t *d = (uint8_t *)data;
+      // uint8_t *d = (uint8_t *)data;
       //  for (size_t i = 0; i < len; i++) {
       //    Serial.write(d[i]);
       //  }
@@ -346,134 +346,14 @@ AsyncFSWebServer::AsyncFSWebServer(uint16_t port) : AsyncWebServer(port) {}
     sendTimeData();
   }*/
 
-void AsyncFSWebServer::s_secondTick(void *arg)
-{
-  AsyncFSWebServer *self = reinterpret_cast<AsyncFSWebServer *>(arg);
-  if (self->_evs.count() > 0)
-  {
-    self->sendTimeData();
-  }
-}
-
-void AsyncFSWebServer::sendTimeData()
-{
-
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
-
-  //send timedata.json
-  if (true)
-  {
-    File paramXmlFile = SPIFFS.open("/timedata.json", "r");
-    if (!paramXmlFile)
-    {
-      PRINT("Failed to open config file\r\n");
-      return;
-    }
-
-    size_t size = paramXmlFile.size();
-    PRINT("PARAMETER_XML_FILE file size: %d bytes\r\n", size);
-    if (size > 1024)
-    {
-      PRINT("WARNING, file size maybe too large\r\n");
-    }
-
-    // Allocate a buffer to store contents of the file
-    char buf[size];
-
-    //copy file to buffer
-    paramXmlFile.readBytes(buf, size);
-
-    //    for (int i = 0; i < size; i++) {
-    //      //DEBUGMQTT(" % c", (char)payload[i]);
-    //      buf[i] = &paramXmlFile[i];
-    //    }
-
-    //add termination character at the end
-    buf[size] = '\0';
-
-    //close the file, save your memory, keep healthy :-)
-    paramXmlFile.close();
-
-    //PRINT(" %s\r\n", buf);
-
-    StreamString output;
-
-    if (output.reserve(1024))
-    {
-      output.printf(buf,
-                    getTimeStr(),
-                    getDateStr(),
-                    getTimeStr(),
-                    getTimeStr(),
-                    getTimeStr(),
-                    getDateStr());
-      DEBUGLOG("%s\n", output.c_str());
-      _evs.send(output.c_str(), "timeDate", millis());
-    }
-    output.flush();
-  }
-
-  //send meterreading.json
-  if (false)
-  {
-    File paramXmlFile = SPIFFS.open("/meterreading.json", "r");
-    if (!paramXmlFile)
-    {
-      PRINT("Failed to open config file\r\n");
-      return;
-    }
-
-    size_t size = paramXmlFile.size();
-    PRINT("PARAMETER_XML_FILE file size: %d bytes\r\n", size);
-    if (size > 1024)
-    {
-      PRINT("WARNING, file size maybe too large\r\n");
-    }
-
-    // Allocate a buffer to store contents of the file
-    char buf[size];
-
-    //copy file to buffer
-    paramXmlFile.readBytes(buf, size);
-
-    //    for (int i = 0; i < size; i++) {
-    //      //DEBUGMQTT(" % c", (char)payload[i]);
-    //      buf[i] = &paramXmlFile[i];
-    //    }
-
-    //add termination character at the end
-    buf[size] = '\0';
-
-    //close the file, save your memory, keep healthy :-)
-    paramXmlFile.close();
-
-    StreamString output;
-
-    if (output.reserve(1024))
-    {
-      output.printf(buf,
-                    getTimeStr(),
-                    WiFi.localIP().toString().c_str(),
-                    bufVoltage,
-                    bufAmpere,
-                    bufWatt,
-                    bufVar,
-                    bufApparentPower,
-                    bufPowerFactor,
-                    bufFrequency,
-                    bufPstkwh,
-                    bufPstkvarh,
-                    bufNgtkvarh,
-                    bufwattThreshold,
-                    bufRequestsPACKET3,
-                    bufSuccessful_requestsPACKET3,
-                    bufFailed_requestsPACKET3,
-                    bufFailed_requestsPACKET3);
-      DEBUGLOG("%s\n", output.c_str());
-      _evs.send(output.c_str(), "meterReading", millis());
-    }
-  }
-}
+// void AsyncFSWebServer::s_secondTick(void *arg)
+// {
+//   AsyncFSWebServer *self = reinterpret_cast<AsyncFSWebServer *>(arg);
+//   if (self->_evs.count() > 0)
+//   {
+//     self->sendTimeData();
+//   }
+// }
 
 String formatBytes(size_t bytes)
 {
@@ -625,7 +505,7 @@ void AsyncFSWebServer::begin(FS *fs)
   DEBUGLOG("Scketch size: %u\r\n", ESP.getSketchSize());
   DEBUGLOG("Free flash space: %u\r\n", ESP.getFreeSketchSpace());
 
-  _secondTk.attach(1.0f, &AsyncFSWebServer::s_secondTick, static_cast<void *>(this)); // Task to run periodic things every second
+  // _secondTk.attach(1.0f, &AsyncFSWebServer::s_secondTick, static_cast<void *>(this)); // Task to run periodic things every second
 
   ConfigureOTA(_httpAuth.wwwPassword.c_str());
 
@@ -635,7 +515,7 @@ void AsyncFSWebServer::begin(FS *fs)
 
   NBNS.begin(_config.hostname);
 
-  SSDP.setSchemaURL("ssdpxml");
+  // SSDP.schema(HTTP.client());
   SSDP.setSchemaURL("ssdpxml");
   SSDP.setHTTPPort(80);
   SSDP.setDeviceType("upnp:rootdevice");
@@ -681,26 +561,20 @@ bool AsyncFSWebServer::loadHTTPAuth()
   }
 
   size_t size = configFile.size();
-  /*if (size > 256) {
-      DEBUGLOG("Secret file size is too large\r\n");
-      httpAuth.auth = false;
-      configFile.close();
-      return false;
-    }*/
-
-  // Allocate a buffer to store contents of the file.
-  std::unique_ptr<char[]> buf(new char[size]);
-
-  // We don't use String here because ArduinoJson library requires the input
-  // buffer to be mutable. If you don't use ArduinoJson, you may as well
-  // use configFile.readString instead.
-  configFile.readBytes(buf.get(), size);
-  configFile.close();
   DEBUGLOG("JSON secret file size: %d bytes\n", size);
-  //DynamicJsonBuffer jsonBuffer(256);
-  // DynamicJsonBuffer jsonBuffer;
+  if (size > 256)
+  {
+    DEBUGLOG("Secret file size is too large\r\n");
+    _httpAuth.auth = false;
+    _httpAuth.wwwUsername = "";
+    _httpAuth.wwwPassword = "";
+    configFile.close();
+    return false;
+  }  
+  
   StaticJsonBuffer<256> jsonBuffer;
-  JsonObject &json = jsonBuffer.parseObject(buf.get());
+  JsonObject &json = jsonBuffer.parseObject(configFile);
+  configFile.close();
 
   if (!json.success())
   {
@@ -711,12 +585,13 @@ bool AsyncFSWebServer::loadHTTPAuth()
     PRINT("Failed to parse secret file\n");
 #endif // RELEASE
     _httpAuth.auth = false;
+    _httpAuth.wwwUsername = "";
+    _httpAuth.wwwPassword = "";
     return false;
   }
 #ifndef RELEASE
-  String temp;
-  json.prettyPrintTo(temp);
-  PRINT("%s\n", temp);
+  json.prettyPrintTo(DEBUGPORT);
+  PRINT("\r\n");
 #endif // RELEASE
 
   _httpAuth.auth = json[FPSTR(pgm_auth)];
@@ -1359,6 +1234,7 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
 
 void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
 {
+  uint32_t heap = ESP.getFreeHeap();
 
   File paramXmlFile = SPIFFS.open(PARAMETER_XML_FILE, "r");
   if (!paramXmlFile)
@@ -1371,7 +1247,8 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
   PRINT("PARAMETER_XML_FILE file size: %d bytes\r\n", size);
   if (size > 1024)
   {
-    PRINT("WARNING, file size maybe too large\r\n");
+    PRINT("PARAMETER_XML_FILE file size is too large\r\n");
+    return;
   }
 
   // Allocate a buffer to store contents of the file
@@ -1402,6 +1279,21 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
     char ipAddress[len + 1];
     strlcpy(ipAddress, WiFi.localIP().toString().c_str(), sizeof(ipAddress) / sizeof(ipAddress[0]));
 
+    char bufRequestsPACKET3[10];
+    char bufSuccessful_requestsPACKET3[10];
+    char bufFailed_requestsPACKET3[10];
+    char bufException_errorsPACKET3[10];
+    char bufConnectionPACKET3[10];
+
+    dtostrf(packets[PACKET3].requests, 0, 0, bufRequestsPACKET3);
+    dtostrf(packets[PACKET3].successful_requests, 0, 0, bufSuccessful_requestsPACKET3);
+    dtostrf(packets[PACKET3].failed_requests, 0, 0, bufFailed_requestsPACKET3);
+    dtostrf(packets[PACKET3].exception_errors, 0, 0, bufException_errorsPACKET3);
+    dtostrf(packets[PACKET3].connection, 0, 0, bufConnectionPACKET3);
+
+    char bufHeap[10];
+    dtostrf(heap, 0, 0, bufHeap);
+
     output.printf(buf,
                   getUptimeStr(),
                   ipAddress,
@@ -1421,9 +1313,9 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
                   bufFailed_requestsPACKET3,
                   bufException_errorsPACKET3,
                   bufConnectionPACKET3,
-                  String(ESP.getFreeHeap()).c_str());
+                  bufHeap);
 
-    request->send(200, "text/xml", (String)output);
+    request->send(200, "text/xml", output);
   }
   else
   {
@@ -1510,12 +1402,12 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
 void AsyncFSWebServer::restart_esp(AsyncWebServerRequest *request)
 {
   request->send_P(200, "text/html", Page_Restart);
-  DEBUGLOG("%s\n", __FUNCTION__);
+  DEBUGLOG("%s\r\n", __FUNCTION__);
   mqttClient.disconnect();
   _evs.close();
-  //ws.close();
+  ws.closeAll();
   _fs->end(); // SPIFFS.end();
-  //WiFi.disconnect();
+  // ESP.restart();
 
   espRestartTimer.once(3, esp_restart);
 }
@@ -1716,22 +1608,21 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
 
 void AsyncFSWebServer::send_ssdp_xml_page(AsyncWebServerRequest *request)
 {
-
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   File configFile = SPIFFS.open(DESCRIPTION_XML_FILE, "r");
   if (!configFile)
   {
     PRINT("Failed to open config file\r\n");
-
     return;
   }
 
   size_t size = configFile.size();
-  PRINT("DESCRIPTION_XML_FILE file size: %d bytes\r\n", size);
+  PRINT("SSDP_XML_FILE file size: %d bytes\r\n", size);
   if (size > 1024)
   {
-    PRINT("WARNING, file size maybe too large\r\n");
+    PRINT("SSDP_XML_FILE file size maybe too large\r\n");
+    return;
   }
 
   // Allocate a buffer to store contents of the file
@@ -1765,9 +1656,7 @@ void AsyncFSWebServer::send_ssdp_xml_page(AsyncWebServerRequest *request)
     char presentationURL[] = "/";
     uint32_t serialNumber = ESP.getChipId();
     char modelName[] = "GHDS100E";
-    // const char *modelName = friendlyName;
     const char *modelNumber = friendlyName;
-    //char modelNumber[] = "911";
     //output.printf(ssdpTemplate,
     output.printf(buf,
                   URLBase,
@@ -1779,7 +1668,7 @@ void AsyncFSWebServer::send_ssdp_xml_page(AsyncWebServerRequest *request)
                   (uint8_t)((serialNumber >> 16) & 0xff),
                   (uint8_t)((serialNumber >> 8) & 0xff),
                   (uint8_t)serialNumber & 0xff);
-    request->send(200, "text/xml", (String)output);
+    request->send(200, "text/xml", output);
   }
   else
   {
@@ -2050,13 +1939,16 @@ void AsyncFSWebServer::serverInit()
       DEBUGLOG("_CONTENT_LENGTH: %u\n", request->contentLength());
     }
 
-    int headers = request->headers();
     int i;
+
+#ifndef RELEASE
+    int headers = request->headers();
     for (i = 0; i < headers; i++)
     {
       AsyncWebHeader *h = request->getHeader(i);
       DEBUGLOG("_HEADER[%s]: %s\n", h->name().c_str(), h->value().c_str());
     }
+#endif
 
     int params = request->params();
     for (i = 0; i < params; i++)

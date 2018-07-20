@@ -298,7 +298,7 @@ function process()
       xmlHttp.onreadystatechange = handleServerResponse;
       xmlHttp.send(null);
   }
-  setTimeout('process()', 1000);
+  setTimeout('process()', 3000);
 }
 
 function handleServerResponse()
@@ -344,7 +344,7 @@ function insertTableData(node_name)
   }
 }
             
-var samples = 60;
+var samples = 40;
 var speed = 1000;
 
 var datWatt = [];

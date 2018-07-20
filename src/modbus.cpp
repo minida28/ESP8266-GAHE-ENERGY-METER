@@ -27,31 +27,31 @@ uint8_t Tx = 3;
 SoftwareSerial swSer(Rx, Tx, false, 256);
 #endif
 
-// This is the easiest way to create new packets
-// Add as many as you want. TOTAL_NO_OF_PACKETS
-// is automatically updated.
-enum
-{
-  PACKET1,
-  PACKET2,
-  PACKET3,
-  PACKET4,
-  PACKET5,
-  PACKET6,
-  PACKET7,
-  PACKET8,
-  PACKET9,
-  PACKET10,
-  PACKET11,
-  PACKET12,
-  PACKET13,
-  PACKET14,
-  TOTAL_NO_OF_PACKETS // leave this last entry
-};
+// // This is the easiest way to create new packets
+// // Add as many as you want. TOTAL_NO_OF_PACKETS
+// // is automatically updated.
+// enum
+// {
+//   PACKET1,
+//   PACKET2,
+//   PACKET3,
+//   PACKET4,
+//   PACKET5,
+//   PACKET6,
+//   PACKET7,
+//   PACKET8,
+//   PACKET9,
+//   PACKET10,
+//   PACKET11,
+//   PACKET12,
+//   PACKET13,
+//   PACKET14,
+//   TOTAL_NO_OF_PACKETS // leave this last entry
+// };
 
 // Create an array of Packets to be configured
 Packet packets[TOTAL_NO_OF_PACKETS];
-//packetPointer packet1 = &packets[PACKET1];
+// packetPointer packet3 = &packets[PACKET3];
 
 // Masters register array
 unsigned int regs[TOTAL_NO_OF_REGISTERS];
@@ -74,11 +74,11 @@ float oldWatt;
 unsigned long lastRequest = 0;
 unsigned long lastmillisoldPacketConnection;
 
-char bufRequestsPACKET3[10];
-char bufSuccessful_requestsPACKET3[10];
-char bufFailed_requestsPACKET3[10];
-char bufException_errorsPACKET3[10];
-char bufConnectionPACKET3[10];
+// char bufRequestsPACKET3[10];
+// char bufSuccessful_requestsPACKET3[10];
+// char bufFailed_requestsPACKET3[10];
+// char bufException_errorsPACKET3[10];
+// char bufConnectionPACKET3[10];
 
 char bufVoltage[10];
 char bufAmpere[10];
@@ -162,6 +162,8 @@ void modbus_loop()
     return;
   }
 
+  // modbus_update();
+
   /* Reset the ESP8266 if no Modbus connections for more than 2 minutes */
 
   if (packets[PACKET1].connection == 1 && packets[PACKET2].connection == 1 && packets[PACKET3].connection == 1 && packets[PACKET6].connection == 1)
@@ -169,7 +171,7 @@ void modbus_loop()
     lastmillisoldPacketConnection = millis();
     // oldWatt = Watt;
   }
-  else if (millis() - lastmillisoldPacketConnection > 120000)
+  else if (millis() - lastmillisoldPacketConnection > 120000UL)
   {
     // while (true);
     return;
@@ -191,19 +193,19 @@ void modbus_loop()
   //  modbus_construct(&packets[PACKET14], 3, READ_INPUT_REGISTERS, 546, 1, 24);  // read Minute & Second
 
   //update values if new request based on Watt request [PACKET3]
-  static uint32_t numReq_old;
-  if (packets[PACKET3].requests != numReq_old)
+  static uint32_t numSuccessReq_old = 0;
+  uint32_t numSuccessReq = packets[PACKET3].successful_requests;
+  if (numSuccessReq != numSuccessReq_old)
   {
+    // update old values
+    numSuccessReq_old = numSuccessReq;
 
-    //update old values
-    numReq_old = packets[PACKET3].requests;
-
-    //convert packet status to char array for later use
-    dtostrf(packets[PACKET3].requests, 0, 0, bufRequestsPACKET3);
-    dtostrf(packets[PACKET3].successful_requests, 0, 0, bufSuccessful_requestsPACKET3);
-    dtostrf(packets[PACKET3].failed_requests, 0, 0, bufFailed_requestsPACKET3);
-    dtostrf(packets[PACKET3].exception_errors, 0, 0, bufException_errorsPACKET3);
-    dtostrf(packets[PACKET3].connection, 0, 0, bufConnectionPACKET3);
+    // // convert packet status to char array for later use
+    // dtostrf(packets[PACKET3].requests, 0, 0, bufRequestsPACKET3);
+    // dtostrf(packets[PACKET3].successful_requests, 0, 0, bufSuccessful_requestsPACKET3);
+    // dtostrf(packets[PACKET3].failed_requests, 0, 0, bufFailed_requestsPACKET3);
+    // dtostrf(packets[PACKET3].exception_errors, 0, 0, bufException_errorsPACKET3);
+    // dtostrf(packets[PACKET3].connection, 0, 0, bufConnectionPACKET3);
   }
   else
   {
@@ -232,59 +234,51 @@ void modbus_loop()
     float Unk2;
 
     unsigned long temp;
+    unsigned long *p = &temp;
 
     //float Voltage;
     temp = (unsigned long)regs[0] << 16 | regs[1];
-    Voltage = *(float *)&temp;
+    Voltage = *(float *)p;
 
     //float Ampere;
     temp = (unsigned long)regs[2] << 16 | regs[3];
-    Ampere = *(float *)&temp;
+    Ampere = *(float *)p;
 
     //float Watt;
     temp = (unsigned long)regs[4] << 16 | regs[5];
-    Watt = *(float *)&temp;
-
-    if (mqttClient.connected())
-    {
-      char duar[20];
-      dtostrf(temp, 0, 0, duar);
-      mqttClient.publish("gila", 0, 0, duar);
-    }
-
-    // unsigned long ulWatt = temp;
+    Watt = *(float *)p;
 
     //float Var;
     temp = (unsigned long)regs[6] << 16 | regs[7];
-    Var = *(float *)&temp;
+    Var = *(float *)p;
 
     //float Frequency;
     temp = (unsigned long)regs[8] << 16 | regs[9];
-    Frequency = *(float *)&temp;
+    Frequency = *(float *)p;
 
     //float Pstkwh;
     temp = (unsigned long)regs[10] << 16 | regs[11];
-    Pstkwh = *(float *)&temp;
+    Pstkwh = *(float *)p;
 
     //float Pstkvarh;
     temp = (unsigned long)regs[12] << 16 | regs[13];
-    Pstkvarh = *(float *)&temp;
+    Pstkvarh = *(float *)p;
 
     //float Ngtkvarh;
     temp = (unsigned long)regs[14] << 16 | regs[15];
-    Ngtkvarh = *(float *)&temp;
+    Ngtkvarh = *(float *)p;
 
     //float PowerFactor;
     temp = (unsigned long)regs[16] << 16 | regs[17];
-    PowerFactor = *(float *)&temp;
+    PowerFactor = *(float *)p;
 
     //float ApparentPower;
     temp = (unsigned long)regs[18] << 16 | regs[19];
-    ApparentPower = *(float *)&temp;
+    ApparentPower = *(float *)p;
 
     //float Unk2;
     temp = (unsigned long)regs[20] << 16 | regs[21];
-    Unk2 = *(float *)&temp;
+    Unk2 = *(float *)p;
 
     /* Convert all floats into string prior to publish to MQTT broker */
 
@@ -332,6 +326,14 @@ void modbus_loop()
   {
     return;
   }
+
+  // if (true)
+  if (packets[PACKET3].requests <= 15)
+  {
+    return;
+  }
+
+  digitalWrite(2, LOW);
 
   // -------------------------------------------------------------------
   // 20 SECOND
@@ -392,84 +394,48 @@ void modbus_loop()
   //publish watt and and ampere readings in higher publish rate (publish every 1 second)
   //if watt is above wattThreshold
 
-  unsigned long timer1;
+  unsigned long timer1 = 10000;
 
-  if (atof(bufWatt) > wattThreshold)
+  if (atoi(bufWatt) >= wattThreshold)
   {
     timer1 = 1000;
-    oldWatt = atof(bufWatt);
   }
   else
   {
     timer1 = 10000;
-    if (oldWatt > wattThreshold)
-    {
-      oldWatt = atof(bufWatt);
-      //const char* wattTopic = PSTR("/rumah/sts/kwh1/watt");
-      //const char* ampereTopic = PSTR("/rumah/sts/kwh1/ampere");
-      char wattTopic[] = "/rumah/sts/kwh1/watt";
-      char ampereTopic[] = "/rumah/sts/kwh1/ampere";
-
-      mqttClient.publish(wattTopic, 0, 0, bufWatt);
-      mqttClient.publish(ampereTopic, 0, 0, bufAmpere);
-    }
   }
-
-  File pubSubJsonFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
-  if (!pubSubJsonFile)
-  {
-    PRINT("Failed to open PUBSUBJSON_FILE file\r\n");
-    pubSubJsonFile.close();
-    return;
-  }
-
-  static uint16_t size = pubSubJsonFile.size();
-  PRINT("PUBSUBJSON_FILE file size: %d bytes\r\n", size);
-  if (size > 1280)
-  {
-    PRINT("WARNING, file size maybe too large\r\n");
-    pubSubJsonFile.close();
-    return;
-  }
-
-  StaticJsonBuffer<1280> jsonBuffer;
-  // DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = jsonBuffer.parseObject(pubSubJsonFile);
-
-  //close the file, save your memory, keep healthy :-)
-  pubSubJsonFile.close();
-
-  if (!root.success())
-  {
-    PRINT("Failed to parse PUBSUBJSON_FILE file\r\n");
-    return;
-  }
-
-  JsonArray &pub_param = root[FPSTR(pgm_pub_param)];
 
   static unsigned long lastTimer;
   if (millis() - lastTimer >= timer1)
   {
     lastTimer = millis(); //  Update time
 
-    uint8_t lenBaseTopic = strlen(root[FPSTR(pgm_pub_default_basetopic)]);
+    const char *bt = configMqtt.pub_default_basetopic;
 
-    const char *bt = root[FPSTR(pgm_pub_default_basetopic)];
+    uint16_t pub_param_numrows = sizeof(configMqtt.pub_param) / sizeof(configMqtt.pub_param[0]);
+    // uint16_t pub_param_numcols = sizeof(configMqtt.pub_param[0]) / sizeof(char);
 
-    for (int i = 0; i < 11; i++)
+    // if (ws.hasClient(num))
+    // {
+    //   char buf[4];
+    //   ws.text(num, itoa(pub_param_numrows, buf, 10));
+    // }
+
+    for (int i = 0; i < pub_param_numrows; i++)
     {
+      const char *prm = configMqtt.pub_param[i];
 
-      char cat[lenBaseTopic + 1];
+      //create buffer to hold the result of concat
+      char cat[strlen(bt) + strlen(prm) + 1];
 
-      strlcpy(cat, bt, sizeof(cat) / sizeof(cat[0]));
+      // copy & concatenate
+      strcpy(cat, bt);
+      strcat(cat, prm);
 
-      const char *pr = pub_param[i];
-
-      strcat(cat, pr);
-
-      //          if (ws.hasClient(num)) {
-      //            ws.text(num, cat);
-      //          }
+      // if (ws.hasClient(num))
+      // {
+      //   ws.text(num, cat);
+      // }
 
       if (i == 0)
       {
@@ -527,37 +493,31 @@ void modbus_loop()
   // -------------------------------------------------------------------
   // 10 SECOND
   // -------------------------------------------------------------------
-
   static unsigned long lastTimer10s;
   if (millis() - lastTimer10s >= 10000)
   {
 
     lastTimer10s = millis(); //  Update time
 
-    //measure base topic length
-    uint8_t lenBaseTopic = strlen(root[FPSTR(pgm_pub_10s_basetopic)]);
-
     //pointer to base topic
-    const char *bt = root[FPSTR(pgm_pub_10s_basetopic)];
+    const char *bt = configMqtt.pub_10s_basetopic;
 
-    for (int i = 0; i < 11; i++)
+    uint16_t pub_param_numrows = sizeof(configMqtt.pub_param) / sizeof(configMqtt.pub_param[0]);
+
+    for (int i = 0; i < pub_param_numrows; i++)
     {
+      const char *prm = configMqtt.pub_param[i];
 
       //create buffer to hold the result of concat
-      char cat[lenBaseTopic + 1];
+      char cat[strlen(bt) + strlen(prm) + 1];
 
-      //copy to buffer
-      strlcpy(cat, bt, sizeof(cat) / sizeof(cat[0]));
-
-      //pointer to param
-      const char *pr = pub_param[i];
-
-      //concat param to buffer
-      strcat(cat, pr);
+      // copy & concatenate
+      strcpy(cat, bt);
+      strcat(cat, prm);
 
       // if (ws.hasClient(num))
       // {
-      //   //ws.text(num, cat);
+      //   ws.text(num, cat);
       // }
 
       if (i == 0)
@@ -703,4 +663,6 @@ void modbus_loop()
 
     */
   }
+
+  digitalWrite(2, HIGH);
 }

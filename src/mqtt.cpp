@@ -209,8 +209,43 @@ void onMqttPublish(uint16_t packetId)
   mqttPublishFlag = true;
 }
 
-boolean mqtt_setup()
+bool mqtt_setup()
 {
+  //register mqtt handler
+  wifiConnectHandlerForMqtt = WiFi.onStationModeGotIP(onWifiConnect);
+  wifiDisconnectHandlerForMqtt = WiFi.onStationModeDisconnected(onWifiDisconnect);
+
+  mqttClient.onConnect(onMqttConnect);
+  mqttClient.onDisconnect(onMqttDisconnect);
+  mqttClient.onSubscribe(onMqttSubscribe);
+  mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  mqttClient.onMessage(onMqttMessage);
+  mqttClient.onPublish(onMqttPublish);
+
+  if (!mqtt_load_config())
+  {
+    return false;
+  }
+
+  mqttClient.setServer(configMqtt.server, configMqtt.port);
+  mqttClient.setCredentials(configMqtt.user, configMqtt.pass);
+  mqttClient.setClientId(configMqtt.clientid);
+  mqttClient.setKeepAlive(configMqtt.keepalive);
+  mqttClient.setCleanSession(configMqtt.cleansession);
+  mqttClient.setWill(configMqtt.lwttopic, configMqtt.lwtqos,
+                     configMqtt.lwtretain, configMqtt.lwtpayload);
+
+  if (!mqtt_load_pubsubconfig())
+  {
+    return false;
+  }
+
+  return true;
+}
+
+bool mqtt_load_config()
+{
+  SPIFFS.begin();
 
   File configFile = SPIFFS.open(MQTT_CONFIG_FILE, "r");
   if (!configFile)
@@ -221,28 +256,17 @@ boolean mqtt_setup()
   }
 
   size_t size = configFile.size();
-  /*if (size > 1024) {
-      DEBUGMQTT("Config file size is too large");
-      configFile.close();
-      return false;
-    }*/
-
-  // Allocate a buffer to store contents of the file.
-  std::unique_ptr<char[]> buf(new char[size]);
-
-  // We don't use String here because ArduinoJson library requires the input
-  // buffer to be mutable. If you don't use ArduinoJson, you may as well
-  // use configFile.readString instead.
-  configFile.readBytes(buf.get(), size);
-  configFile.close();
   DEBUGMQTT("JSON file size: %d bytes\r\n", size);
-  //DynamicJsonBuffer jsonBuffer(1024);
+
+  if (size > 1024)
+  {
+    DEBUGMQTT("Config file size is too large");
+    configFile.close();
+    return false;
+  }
+
   StaticJsonBuffer<1024> jsonBuffer;
-
-  JsonObject &json = jsonBuffer.parseObject(buf.get());
-
-  //  JsonVariant json;
-  //  json = jsonBuffer.parse(buf.get());
+  JsonObject &json = jsonBuffer.parseObject(configFile);
 
   if (!json.success())
   {
@@ -250,78 +274,86 @@ boolean mqtt_setup()
     return false;
   }
 
-#ifndef RELEASEMQTT
-  String temp;
-  json.prettyPrintTo(temp);
-  Serial.println(temp);
-#endif
+  // #ifndef RELEASEMQTT
+  json.prettyPrintTo(DEBUGPORT);
+  DEBUGMQTT("\r\n");
+  // #endif
 
-  //uint16_t len;
-  // auto mqtt_server = json[FPSTR(pgm_mqtt_server)].as<const char *>();
-  //strcpy(configMqtt.server, mqtt_server);
   strlcpy(configMqtt.server, json[FPSTR(pgm_mqtt_server)], sizeof(configMqtt.server) / sizeof(configMqtt.server[0]));
-
-  // auto mqtt_port = (uint16_t)json[FPSTR(pgm_mqtt_port)];
-  //configMqtt.port = mqtt_port;
   configMqtt.port = json[FPSTR(pgm_mqtt_port)];
-
-  // auto mqtt_user = json[FPSTR(pgm_mqtt_user)].as<const char *>();
-  //len = json[FPSTR(pgm_mqtt_user)].measureLength();
-  //strcpy(configMqtt.user, mqtt_user);
   strlcpy(configMqtt.user, json[FPSTR(pgm_mqtt_user)], sizeof(configMqtt.user) / sizeof(configMqtt.user[0]));
-
-  // auto mqtt_pass = json[FPSTR(pgm_mqtt_pass)].as<const char *>();
-  //strcpy(configMqtt.pass, mqtt_pass);
   strlcpy(configMqtt.pass, json[FPSTR(pgm_mqtt_pass)], sizeof(configMqtt.pass) / sizeof(configMqtt.pass[0]));
-
-  // auto mqtt_clientid = json[FPSTR(pgm_mqtt_clientid)].as<const char *>();
-  //strcpy(configMqtt.clientid, mqtt_clientid);
   strlcpy(configMqtt.clientid, json[FPSTR(pgm_mqtt_clientid)], sizeof(configMqtt.clientid) / sizeof(configMqtt.clientid[0]));
-
-  // auto mqtt_keepalive = (uint16_t)json[FPSTR(pgm_mqtt_keepalive)];
-  //configMqtt.keepalive = mqtt_keepalive;
   configMqtt.keepalive = json[FPSTR(pgm_mqtt_keepalive)];
-
-  // auto mqtt_cleansession = (bool)json[FPSTR(pgm_mqtt_cleansession)];
-  //configMqtt.cleansession = mqtt_cleanSession;
   configMqtt.cleansession = json[FPSTR(pgm_mqtt_cleansession)];
-
-  //lwt
-  // auto mqtt_lwttopic = json[FPSTR(pgm_mqtt_lwt)][0].as<const char *>();
-  //strcpy(configMqtt.lwttopic, mqtt_lwtlwttopic);
   strlcpy(configMqtt.lwttopic, json[FPSTR(pgm_mqtt_lwt)][0], sizeof(configMqtt.lwttopic) / sizeof(configMqtt.lwttopic[0]));
-
-  // auto mqtt_lwtqos = (uint8_t)json[FPSTR(pgm_mqtt_lwt)][1];
-  //configMqtt.lwtqos = mqttlwt_qos;
   configMqtt.lwtqos = json[FPSTR(pgm_mqtt_lwt)][1];
-
-  // auto mqtt_lwtretain = (bool)json[FPSTR(pgm_mqtt_lwt)][2];
-  //configMqtt.lwtretain = mqtt_lwt_retain;
   configMqtt.lwtretain = json[FPSTR(pgm_mqtt_lwt)][2];
-
-  // auto mqtt_lwtpayload = json[FPSTR(pgm_mqtt_lwt)][3].as<const char *>();
-  //strcpy(configMqtt.lwtpayload, mqtt_lwtpayload);
   strlcpy(configMqtt.lwtpayload, json[FPSTR(pgm_mqtt_lwt)][3], sizeof(configMqtt.lwtpayload) / sizeof(configMqtt.lwtpayload[0]));
 
-  wifiConnectHandlerForMqtt = WiFi.onStationModeGotIP(onWifiConnect);
-  wifiDisconnectHandlerForMqtt = WiFi.onStationModeDisconnected(onWifiDisconnect);
+  return true;
+}
 
-  //register mqtt handler
-  mqttClient.onConnect(onMqttConnect);
-  mqttClient.onDisconnect(onMqttDisconnect);
-  mqttClient.onSubscribe(onMqttSubscribe);
-  mqttClient.onUnsubscribe(onMqttUnsubscribe);
-  mqttClient.onMessage(onMqttMessage);
-  mqttClient.onPublish(onMqttPublish);
+bool mqtt_load_pubsubconfig()
+{
+  File pubSubJsonFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
+  if (!pubSubJsonFile)
+  {
+    DEBUGMQTT("Failed to open PUBSUBJSON_FILE file\r\n");
+    pubSubJsonFile.close();
+    return false;
+  }
 
-  //setup
-  mqttClient.setServer(configMqtt.server, configMqtt.port);
-  mqttClient.setCredentials(configMqtt.user, configMqtt.pass);
-  mqttClient.setClientId(configMqtt.clientid);
-  mqttClient.setKeepAlive(configMqtt.keepalive);
-  mqttClient.setCleanSession(configMqtt.cleansession);
-  mqttClient.setWill(configMqtt.lwttopic, configMqtt.lwtqos,
-                     configMqtt.lwtretain, configMqtt.lwtpayload);
+  const uint16_t allocatedJsonBufferSize = 1280;
+  DEBUGMQTT("Allocated JsonBufferSize size: %d bytes\r\n", allocatedJsonBufferSize);
+
+  uint16_t size = pubSubJsonFile.size();
+  DEBUGMQTT("PUBSUBJSON_FILE file size: %d bytes\r\n", size);
+
+  if (size > allocatedJsonBufferSize)
+  {
+    DEBUGMQTT("PUBSUBJSON_FILE file size is too large! \r\n");
+    pubSubJsonFile.close();
+    return false;
+  }
+
+  StaticJsonBuffer<allocatedJsonBufferSize> jsonBuffer;
+  JsonObject &root = jsonBuffer.parseObject(pubSubJsonFile);
+
+  //close the file, save your memory, keep healthy :-)
+  pubSubJsonFile.close();
+
+  if (!root.success())
+  {
+    DEBUGMQTT("Failed to parse PUBSUBJSON_FILE file\r\n");
+    return false;
+  }
+
+  strlcpy(configMqtt.pub_default_basetopic, root[FPSTR(pgm_pub_default_basetopic)], sizeof(configMqtt.pub_default_basetopic) / sizeof(configMqtt.pub_default_basetopic[0]));
+
+  JsonArray &pub_param = root[FPSTR(pgm_pub_param)];
+
+  uint16_t jsonArraySize = pub_param.size();
+  uint16_t pub_param_numrows = sizeof(configMqtt.pub_param) / sizeof(configMqtt.pub_param[0]);
+  uint16_t pub_param_numcols = sizeof(configMqtt.pub_param[0]) / sizeof(char);
+
+  if (jsonArraySize > pub_param_numrows)
+  {
+    DEBUGMQTT("Json param array size is too large!\r\n");
+    return false;
+  }
+
+  if (jsonArraySize < pub_param_numrows)
+  {
+    DEBUGMQTT("WARNING, Json param array size is smaller!\r\n");
+    // return false;
+  }
+
+  for (uint16_t i = 0; i < jsonArraySize; i++)
+  {
+    const char *pr = pub_param[i];
+    strlcpy(configMqtt.pub_param[i], pr, pub_param_numcols);
+  }
 
   return true;
 }
@@ -378,25 +410,23 @@ void MqttConnectedCb()
 #endif
 
   // publish 1
-  const char *publish_1_topic = json[FPSTR(pgm_publish_1)][0];
-  uint8_t publish_1_qos = json[FPSTR(pgm_publish_1)][1];
-  bool publish_1_retain = json[FPSTR(pgm_publish_1)][2];
-  const char *publish_1_payload = json[FPSTR(pgm_publish_1)][3];
   uint16_t packetIdPub1 = mqttClient.publish(
-      publish_1_topic,  //topic
-      publish_1_qos,    //qos
-      publish_1_retain, //retain
-      publish_1_payload //payload
+      configMqtt.publish_1_topic,  //topic
+      configMqtt.publish_1_qos,    //qos
+      configMqtt.publish_1_retain, //retain
+      configMqtt.publish_1_payload //payload
   );
   DEBUGMQTT(
       "Publishing packetId: %d\n  topic:  %s\n QoS:  %d\n retain:  %d\n payload:  %s\r\n",
       packetIdPub1, publish_1_topic, publish_1_qos, publish_1_retain, publish_1_topic);
 
   // subscribe 1
-  const char *subscribe_1_topic = json[FPSTR(pgm_subscribe_1)][0];
-  uint8_t subscribe_1_qos = json[FPSTR(pgm_subscribe_1)][1];
-  uint16_t packetIdSub1 = mqttClient.subscribe(subscribe_1_topic, subscribe_1_qos);
-  DEBUGMQTT("Subscribing packetId: %d\n  topic: %s\n  QoS: %d\r\n", packetIdSub1, subscribe_1_topic, subscribe_1_qos);
+  uint16_t packetIdSub1 = mqttClient.subscribe(
+      configMqtt.subscribe_1_topic,
+      configMqtt.subscribe_1_qos);
+  DEBUGMQTT(
+      "Subscribing packetId: %d\n  topic: %s\n  QoS: %d\r\n",
+      packetIdSub1, subscribe_1_topic, subscribe_1_qos);
 
   //  //subscribe 2
   //  const char* subscribe_2_topic = json[FPSTR(pgm_subscribe_2)][0];

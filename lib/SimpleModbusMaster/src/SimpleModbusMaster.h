@@ -143,10 +143,10 @@ void modbus_configure(SoftwareSerial* SerialPort,
 #else
 void modbus_configure(HardwareSerial* SerialPort,
 #endif
-											long baud, 
+											unsigned long baud, 
 											unsigned char byteFormat,
-											long _timeout, 
-											long _polling, 
+											unsigned long _timeout, 
+											unsigned long _polling, 
 											unsigned char _retry_count, 
 											unsigned char _TxEnablePin,
 											Packet* _packets, 

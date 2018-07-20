@@ -50,25 +50,41 @@ extern const char pgm_txt_subcribedTopic_1[];
 
 // MQTT config
 typedef struct {
-  char server[45];
-  uint16_t port;
-  char user[32];
-  char pass[64];
-  char clientid[16];
-  uint16_t keepalive;
-  bool cleansession;
-  char lwttopic[64];
-  uint8_t lwtqos;
-  bool lwtretain;
-  char lwtpayload[64];
-  //char publish_1_topic[64];
-  //uint8_t publish_1_qos;
-  //bool publish_1_retain;
-  //char publish_1_payload[64];
-  //char subscribe_1_topic[64];
-  //uint8_t subscribe_1_qos;
-  //char subscribe_2_topic[64];
-  //uint8_t subscribe_2_qos;
+  char server[64] = "192.168.10.3";
+  uint16_t port = 1883;
+  char user[32] = "test";
+  char pass[64] = "test";
+  char clientid[16] = "kwh1";
+  uint16_t keepalive = 5;
+  bool cleansession = true;
+  char lwttopic[64] = "kwh1/mqttstatus";
+  uint8_t lwtqos = 2;
+  bool lwtretain = true;
+  char lwtpayload[64] = "DISCONNECTED";
+
+  char publish_1_topic[64] = "kwh1/mqttstatus";
+  uint8_t publish_1_qos = 2;
+  bool publish_1_retain = true;
+  char publish_1_payload[64] = "CONNECTED";
+  char publish_2_topic[64] = "/rumah/sts/kwh1/wattthreshold";
+  uint8_t publish_2_qos = 2;
+  bool publish_2_retain = true;
+  char publish_2_payload[64] = "";
+  char subscribe_1_topic[64] = "/rumah/cmd/kwh1/wattthreshold";
+  uint8_t subscribe_1_qos = 2;
+  char subscribe_2_topic[64];
+  uint8_t subscribe_2_qos;
+
+  char pub_param[11][18] = {"voltage","ampere","watt","var","frequency","pstkwh","pstkvarh","ngtkvarh","powerfactor","apparentpower","unk2"};
+  char pub_default_basetopic[32] = "/rumah/sts/kwh1/";
+  char pub_basetopic[32] = "rumah/kwh1/";
+  char pub_1s_basetopic[32] = "/rumah/sts/1s/kwh1/";
+  char pub_10s_basetopic[32] = "/rumah/sts/10s/kwh1/";
+  char pub_15s_basetopic[32] = "/rumah/sts/15s/kwh1/";
+  char pub_prefix_1s[5] = "1s";
+  char pub_prefix_10s[5] = "10s";
+  char pub_prefix_15s[5] = "15s";
+  char powerthreshold_param[24] = "wattthreshold";
 } strConfigMqtt;
 
 extern  strConfigMqtt configMqtt;
@@ -107,9 +123,11 @@ extern boolean mqtt_connected();
 // -------------------------------------------------------------------
 // Initialize MQTT connection
 // -------------------------------------------------------------------
-extern boolean mqtt_setup();
+bool mqtt_load_config();
+bool mqtt_load_pubsubconfig();
+extern bool mqtt_setup();
 
-extern boolean mqtt_reconnect();
+extern bool mqtt_reconnect();
 
 extern uint16_t wattThreshold;
 

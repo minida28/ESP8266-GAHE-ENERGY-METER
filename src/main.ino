@@ -158,7 +158,7 @@ bool save_system_info() {
 
 void setup()
 {
-  //pinMode(LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
+  pinMode(2, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
   //pinMode(D5, INPUT_PULLUP);
   Serial.begin(115200);
   Serial.setDebugOutput(false);

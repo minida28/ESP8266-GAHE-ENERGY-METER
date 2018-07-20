@@ -117,7 +117,7 @@ protected:
 
   AsyncEventSource _evs = AsyncEventSource("/events");
 
-  void sendTimeData();
+  // void sendTimeData();
   bool load_config();
   void defaultConfig();
   bool save_config();
@@ -132,7 +132,7 @@ protected:
   void onWiFiConnected(WiFiEventStationModeConnected data);
   void onWiFiDisconnected(WiFiEventStationModeDisconnected data);
 
-  static void s_secondTick(void *arg);
+  // static void s_secondTick(void *arg);
 
   String getMacAddress();
 

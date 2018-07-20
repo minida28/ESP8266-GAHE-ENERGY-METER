@@ -9,6 +9,12 @@
         "rope": "cpp",
         "slist": "cpp",
         "initializer_list": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "fstream": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp",
+        "*.tcc": "cpp"
     }
 }

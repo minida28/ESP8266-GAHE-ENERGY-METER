@@ -5,7 +5,29 @@
 //#include <SoftwareSerial.h>
 #include "config.h"
 
+// This is the easiest way to create new packets
+// Add as many as you want. TOTAL_NO_OF_PACKETS
+// is automatically updated.
+enum
+{
+  PACKET1,
+  PACKET2,
+  PACKET3,
+  PACKET4,
+  PACKET5,
+  PACKET6,
+  PACKET7,
+  PACKET8,
+  PACKET9,
+  PACKET10,
+  PACKET11,
+  PACKET12,
+  PACKET13,
+  PACKET14,
+  TOTAL_NO_OF_PACKETS // leave this last entry
+};
 
+extern Packet packets[];
 
 //extern SoftwareSerial swSer;
 
