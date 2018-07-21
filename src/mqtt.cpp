@@ -28,25 +28,6 @@
 #include "modbus.h"
 #include "mqtt.h"
 
-bool mqttConnectedFlag = false;
-bool mqttDisconnectedFlag = false;
-bool mqttPublishFlag = false;
-bool mqttSubscribeFlag = false;
-bool mqttUnsubscribeFlag = false;
-
-uint32_t reconnectInterval = 30000;
-int clientTimeout = 0;
-int i = 0;
-
-AsyncMqttClient mqttClient;
-
-Ticker mqttReconnectTimer;
-
-WiFiEventHandler wifiConnectHandlerForMqtt;
-WiFiEventHandler wifiDisconnectHandlerForMqtt;
-
-//IPAddress mqttServer(192, 168, 10, 3);
-
 const char pgm_txt_subcribedTopic_0[] PROGMEM = "/rumah/sts/1s/kwh1/watt";
 const char pgm_txt_subcribedTopic_1[] PROGMEM = "/rumah/sts/1s/kwh1/voltage";
 
@@ -62,6 +43,29 @@ const char pgm_mqtt_lwt[] PROGMEM = "mqtt_lwt";
 const char pgm_mqtt_user[] PROGMEM = "mqtt_user";
 const char pgm_mqtt_pass[] PROGMEM = "mqtt_pass";
 const char pgm_mqtt_clientid[] PROGMEM = "mqtt_clientid";
+
+bool mqttConnectedFlag = false;
+bool mqttDisconnectedFlag = false;
+bool mqttPublishFlag = false;
+bool mqttSubscribeFlag = false;
+bool mqttUnsubscribeFlag = false;
+bool mqttOnMessageFlag = false;
+
+uint32_t reconnectInterval = 30000;
+int clientTimeout = 0;
+int i = 0;
+
+char bufTopic[32];
+char bufPayload[256];
+
+AsyncMqttClient mqttClient;
+
+Ticker mqttReconnectTimer;
+
+WiFiEventHandler wifiConnectHandlerForMqtt;
+WiFiEventHandler wifiDisconnectHandlerForMqtt;
+
+//IPAddress mqttServer(192, 168, 10, 3);
 
 // MQTT config struct
 strConfigMqtt configMqtt;
@@ -110,98 +114,37 @@ void onMqttUnsubscribe(uint16_t packetId)
 
 void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total)
 {
-  //  Serial.println("Payload received.");
-  //  Serial.print("  topic: ");
-  //  Serial.println(topic);
-  //  Serial.print("  qos: ");
-  //  Serial.println(properties.qos);
-  //  Serial.print("  dup: ");
-  //  Serial.println(properties.dup);
-  //  Serial.print("  retain: ");
-  //  Serial.println(properties.retain);
-  //  Serial.print("  len: ");
-  //  Serial.println(len);
-  //  Serial.print("  index: ");
-  //  Serial.println(index);
-  //  Serial.print("  total: ");
-  //  Serial.println(total);
+  mqttOnMessageFlag = true;
 
-  DEBUGMQTT("MQTT received [%s] ", topic);
-#ifndef RELEASEMQTT
-  for (int i = 0; i < len; i++)
+  DEBUGMQTT("Payload received\r\n  topic: %s\r\n  qos: %d\r\n  dup: %d\r\n  retain: %d\r\n  len: %d\r\n  index: %d\r\n  total: %d\r\n",
+            topic, properties.qos, properties.dup, properties.retain, len, index, total);
+
+  size_t lenTopic = strlen(topic) + 1;
+  DEBUGMQTT("topic len:%d, payload len:%d", lenTopic, len);
+
+  if (lenTopic >= 32)
   {
-    DEBUGMQTT("%c", (char)payload[i]);
-  }
-#endif
-  DEBUGMQTT("\r\n");
-
-  char t[64];
-  strcpy(t, topic);
-
-  File configFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
-  if (!configFile)
-  {
-    configFile.close();
-    DEBUGMQTT("Failed to open config file\r\n");
+    DEBUGMQTT("Topic length is too large!");
     return;
   }
 
-  size_t size = configFile.size();
-  //DEBUGMQTT("CONFIG_FILE_MQTT_PUBSUB file size: %d bytes\r\n", size);
-  if (size > 1024)
+  if (len >= 256)
   {
-    DEBUGMQTT("WARNING, file size maybe too large\r\n");
-
-    //configFile.close();
-
-    //return false;
-  }
-
-  // Allocate a buffer to store contents of the file.
-  std::unique_ptr<char[]> buf(new char[size]);
-
-  // We don't use String here because ArduinoJson library requires the input
-  // buffer to be mutable. If you don't use ArduinoJson, you may as well
-  // use configFile.readString instead.
-  configFile.readBytes(buf.get(), size);
-  configFile.close();
-  //DynamicJsonBuffer jsonBuffer(1024);
-  StaticJsonBuffer<1024> jsonBuffer;
-
-  JsonObject &json = jsonBuffer.parseObject(buf.get());
-
-  //  JsonVariant json;
-  //  json = jsonBuffer.parse(buf.get());
-
-  if (!json.success())
-  {
-    DEBUGMQTT("Failed to parse MQTT config file\r\n");
+    DEBUGMQTT("Payload length is too large!");
     return;
   }
 
-  //#ifndef RELEASEMQTT
-  //  String temp;
-  //  json.prettyPrintTo(temp);
-  //  Serial.println(temp);
-  //#endif
-
-  const char *subscribe_1_topic = json["subscribe_1"][0];
-  // uint8_t subscribe_1_qos = json["subscribe_1"][1];
-
-  //handle wattThreshold payload
-  if (strncmp(const_cast<char *>(topic), subscribe_1_topic, json[FPSTR(pgm_subscribe_1)][0].measureLength()) == 0)
+  for (size_t i = 0; i < lenTopic; i++)
   {
-
-    //copy payload
-    strlcpy(bufwattThreshold, payload, sizeof(bufwattThreshold) / sizeof(bufwattThreshold[0]));
-    wattThreshold = atof(bufwattThreshold);
-
-    //roundup value
-    dtostrf(atof(bufwattThreshold), 0, 1, bufwattThreshold);
-
-    // acknowledge the receipt by sending back status
-    mqttClient.publish("/rumah/sts/kwh1/wattthreshold", 2, true, bufwattThreshold);
+    bufTopic[i] = (char)topic[i];
   }
+  bufTopic[lenTopic] = '\0';
+
+  for (size_t i = 0; i < len; i++)
+  {
+    bufPayload[i] = (char)payload[i];
+  }
+  bufPayload[len] = '\0';
 }
 
 void onMqttPublish(uint16_t packetId)
@@ -410,29 +353,29 @@ void MqttConnectedCb()
 #endif
 
   // publish 1
-  uint16_t packetIdPub1 = mqttClient.publish(
+  mqttClient.publish(
       configMqtt.publish_1_topic,  //topic
       configMqtt.publish_1_qos,    //qos
       configMqtt.publish_1_retain, //retain
       configMqtt.publish_1_payload //payload
   );
   DEBUGMQTT(
-      "Publishing packetId: %d\n  topic:  %s\n QoS:  %d\n retain:  %d\n payload:  %s\r\n",
-      packetIdPub1, publish_1_topic, publish_1_qos, publish_1_retain, publish_1_topic);
+      "Publishing packet topic:  %s\r\n QoS:  %d\r\n retain:  %d\r\n payload:  %s\r\n",
+      publish_1_topic, publish_1_qos, publish_1_retain, publish_1_topic);
 
   // subscribe 1
-  uint16_t packetIdSub1 = mqttClient.subscribe(
+  mqttClient.subscribe(
       configMqtt.subscribe_1_topic,
       configMqtt.subscribe_1_qos);
   DEBUGMQTT(
-      "Subscribing packetId: %d\n  topic: %s\n  QoS: %d\r\n",
-      packetIdSub1, subscribe_1_topic, subscribe_1_qos);
+      "Subscribing packet  topic: %s\n  QoS: %d\r\n",
+      subscribe_1_topic, subscribe_1_qos);
 
   //  //subscribe 2
   //  const char* subscribe_2_topic = json[FPSTR(pgm_subscribe_2)][0];
   //  uint8_t subscribe_2_qos = json[FPSTR(pgm_subscribe_2)][1];
   //  uint16_t packetIdSub2 = mqttClient.subscribe(subscribe_2_topic, subscribe_2_qos);
-  //  DEBUGMQTT("Subscribing packetId: %d\n  topic: %s\n  QoS: %d\r\n"), packetIdSub2, subscribe_2_topic, subscribe_2_qos);
+  //  DEBUGMQTT("Subscribing packetId: %d\r\n  topic: %s\r\n  QoS: %d\r\n"), packetIdSub2, subscribe_2_topic, subscribe_2_qos);
 }
 
 void MqttDisconnectedCb()
@@ -478,5 +421,30 @@ void mqtt_loop()
     mqttUnsubscribeFlag = false;
     // DEBUGMQTT("Unsubscribe acknowledged.\n  packetId: %d\r\n", packetId);
     DEBUGMQTT("Unsubscribe acknowledged.\r\n");
+  }
+
+  if (mqttOnMessageFlag)
+  {
+    mqttOnMessageFlag = false;
+
+    const char *subscribe_1_topic = configMqtt.subscribe_1_topic;
+
+    //handle energy meter payload
+    // if (strncmp(const_cast<char *>(topic), sub1_topic, json[FPSTR(sub1_topic)].measureLength()) == 0)
+    if (strncmp(bufTopic, subscribe_1_topic, strlen(subscribe_1_topic)) == 0)
+    {
+      DEBUGMQTT("MQTT received [%s]\r\n", bufTopic);
+      DEBUGMQTT("Payload: %s\r\n", bufPayload);
+
+      //copy payload
+      strlcpy(bufwattThreshold, bufPayload, sizeof(bufwattThreshold) / sizeof(bufwattThreshold[0]));
+      wattThreshold = atof(bufwattThreshold);
+
+      //roundup value
+      dtostrf(atof(bufwattThreshold), 0, 1, bufwattThreshold);
+
+      // acknowledge the receipt by sending back status
+      mqttClient.publish("/rumah/sts/kwh1/wattthreshold", 2, true, bufwattThreshold);
+    }
   }
 }
