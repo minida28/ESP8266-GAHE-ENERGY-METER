@@ -333,7 +333,7 @@ void modbus_loop()
     return;
   }
 
-  digitalWrite(2, LOW);
+  // digitalWrite(2, LOW);
 
   // -------------------------------------------------------------------
   // 20 SECOND
@@ -385,24 +385,36 @@ void modbus_loop()
 
     size_t len = root.measureLength();
 
-    char buf[len];
-    root.printTo(buf, len + 1);
+    char buf[len+1];
+    root.printTo(buf, len+1);
+    buf[len+1] = 0;
 
     mqttClient.publish("ESP13579541/meterreading/1s", 2, 0, buf);
   }
 
   //publish watt and and ampere readings in higher publish rate (publish every 1 second)
   //if watt is above wattThreshold
-
   unsigned long timer1 = 10000;
+  bool hiWattState = false;
 
   if (atoi(bufWatt) >= wattThreshold)
   {
     timer1 = 1000;
+    hiWattState = true;
   }
-  else
+
+  static bool hiWattState_old = false;
+  if (hiWattState != hiWattState_old)
   {
-    timer1 = 10000;
+    hiWattState_old = hiWattState;
+
+    if (hiWattState == false)
+    {
+      char wattTopic[] = "/rumah/sts/kwh1/watt";
+      char ampereTopic[] = "/rumah/sts/kwh1/ampere";
+      mqttClient.publish(wattTopic, 0, 0, bufWatt);
+      mqttClient.publish(ampereTopic, 0, 0, bufAmpere);
+    }
   }
 
   static unsigned long lastTimer;

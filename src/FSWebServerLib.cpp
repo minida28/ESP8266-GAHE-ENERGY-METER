@@ -89,7 +89,7 @@ void runAsyncClientEmoncms()
 
     size_t len = key.measureLength();
     char bufFulljson[len + 1];
-    key.printTo(bufFulljson, len + 1);
+    key.printTo(bufFulljson, len);
 
     StreamString output;
     if (output.reserve(1024))
