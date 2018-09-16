@@ -3,7 +3,6 @@
 
 // Coba pakai D1,D2,D5,D6 on NodeMcu
 
-
 #include "FSWebServerLib.h"
 // #include "timehelper.h"
 #include "config.h"
@@ -11,40 +10,47 @@
 #include "mqtt.h"
 #include "dhtlib.h"
 
-
 // #include <ESP8266FtpServer.h>
 
 // FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
 
-int pgm_lastIndexOf(uint8_t c, const char * p)
+int pgm_lastIndexOf(uint8_t c, const char *p)
 {
   int last_index = -1; // -1 indicates no match
   uint8_t b;
-  for (int i = 0; true; i++) {
+  for (int i = 0; true; i++)
+  {
     b = pgm_read_byte(p++);
     if (b == c)
       last_index = i;
-    else if (b == 0) break;
+    else if (b == 0)
+      break;
   }
   return last_index;
 }
 
 // displays at startup the Sketch running in the Arduino
-void display_srcfile_details(void) {
-  const char *the_path = PSTR(__FILE__);           // save RAM, use flash to hold __FILE__ instead
+void display_srcfile_details(void)
+{
+  const char *the_path = PSTR(__FILE__); // save RAM, use flash to hold __FILE__ instead
 
   int slash_loc = pgm_lastIndexOf('/', the_path); // index of last '/'
-  if (slash_loc < 0) slash_loc = pgm_lastIndexOf('\\', the_path); // or last '\' (windows, ugh)
+  if (slash_loc < 0)
+    slash_loc = pgm_lastIndexOf('\\', the_path); // or last '\' (windows, ugh)
 
-  int dot_loc = pgm_lastIndexOf('.', the_path);  // index of last '.'
-  if (dot_loc < 0) dot_loc = pgm_lastIndexOf(0, the_path); // if no dot, return end of string
+  int dot_loc = pgm_lastIndexOf('.', the_path); // index of last '.'
+  if (dot_loc < 0)
+    dot_loc = pgm_lastIndexOf(0, the_path); // if no dot, return end of string
 
   Serial.print(F("\nSketch name: "));
 
-  for (int i = slash_loc + 1; i < dot_loc; i++) {
+  for (int i = slash_loc + 1; i < dot_loc; i++)
+  {
     uint8_t b = pgm_read_byte(&the_path[i]);
-    if (b != 0) Serial.print((char) b);
-    else break;
+    if (b != 0)
+      Serial.print((char)b);
+    else
+      break;
   }
   Serial.println();
 
@@ -55,7 +61,8 @@ void display_srcfile_details(void) {
   Serial.println();
 }
 
-bool save_system_info() {
+bool save_system_info()
+{
   PRINT("%s\r\n", __PRETTY_FUNCTION__);
 
   // const char* pathtofile = PSTR(pgm_filesystemoverview);
@@ -64,7 +71,8 @@ bool save_system_info() {
   if (!SPIFFS.exists(FPSTR(pgm_systeminfofile)))
   {
     file = SPIFFS.open(FPSTR(pgm_systeminfofile), "w");
-    if (!file) {
+    if (!file)
+    {
       PRINT("Failed to open config file for writing\r\n");
       file.close();
       return false;
@@ -76,39 +84,46 @@ bool save_system_info() {
   }
   //get existing json file
   file = SPIFFS.open(FPSTR(pgm_systeminfofile), "w");
-  if (!file) {
+  if (!file)
+  {
     PRINT("Failed to open config file");
     return false;
   }
 
-  const char* the_path = PSTR(__FILE__);
+  const char *the_path = PSTR(__FILE__);
   // const char* _compiletime = PSTR(__TIME__);
 
   int slash_loc = pgm_lastIndexOf('/', the_path); // index of last '/'
-  if (slash_loc < 0) slash_loc = pgm_lastIndexOf('\\', the_path); // or last '\' (windows, ugh)
+  if (slash_loc < 0)
+    slash_loc = pgm_lastIndexOf('\\', the_path); // or last '\' (windows, ugh)
 
-  int dot_loc = pgm_lastIndexOf('.', the_path);  // index of last '.'
-  if (dot_loc < 0) dot_loc = pgm_lastIndexOf(0, the_path); // if no dot, return end of string
+  int dot_loc = pgm_lastIndexOf('.', the_path); // index of last '.'
+  if (dot_loc < 0)
+    dot_loc = pgm_lastIndexOf(0, the_path); // if no dot, return end of string
 
   int lenPath = strlen(the_path);
   int lenFileName = (lenPath - (slash_loc + 1));
 
-  char fileName[lenFileName];
+  char fileName[lenFileName + 1];
   //Serial.println(lenFileName);
   //Serial.println(sizeof(fileName));
 
   int j = 0;
-  for (int i = slash_loc + 1; i < lenPath; i++) {
+  for (int i = slash_loc + 1; i < lenPath; i++)
+  {
     uint8_t b = pgm_read_byte(&the_path[i]);
-    if (b != 0) {
-      fileName[j] = (char) b;
+    if (b != 0)
+    {
+      fileName[j] = (char)b;
       //Serial.print(fileName[j]);
       j++;
-      if (j >= lenFileName) {
+      if (j >= lenFileName)
+      {
         break;
       }
     }
-    else {
+    else
+    {
       break;
     }
   }
@@ -118,15 +133,15 @@ bool save_system_info() {
 
   //const char* _compiledate = PSTR(__DATE__);
   int lenCompileDate = strlen_P(PSTR(__DATE__));
-  char compileDate[lenCompileDate];
+  char compileDate[lenCompileDate + 1];
   strcpy_P(compileDate, PSTR(__DATE__));
 
   int lenCompileTime = strlen_P(PSTR(__TIME__));
-  char compileTime[lenCompileTime];
+  char compileTime[lenCompileTime + 1];
   strcpy_P(compileTime, PSTR(__TIME__));
 
   DynamicJsonBuffer jsonBuffer;
-  JsonObject& root = jsonBuffer.createObject();
+  JsonObject &root = jsonBuffer.createObject();
 
   root[FPSTR(pgm_filename)] = fileName;
   root[FPSTR(pgm_compiledate)] = compileDate;
@@ -154,11 +169,9 @@ bool save_system_info() {
   return true;
 }
 
-
-
 void setup()
 {
-  pinMode(2, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
+  pinMode(2, OUTPUT); // Initialize the BUILTIN_LED pin as an output
   //pinMode(D5, INPUT_PULLUP);
   Serial.begin(115200);
   Serial.setDebugOutput(false);
@@ -169,8 +182,6 @@ void setup()
 #if defined(SOFTWARESERIAL)
   Serial.swap();
 #endif
-
-
 
   display_srcfile_details();
 
@@ -187,14 +198,13 @@ void setup()
   Serial.println(ESP.getCpuFreqMHz());
   Serial.println();
 
-
-
   // -------------------------------------------------------------------
   // Mount File system
   // -------------------------------------------------------------------
   Serial.println(F("Mounting FS..."));
 
-  if (!SPIFFS.begin()) {
+  if (!SPIFFS.begin())
+  {
     Serial.println("Failed to mount file system");
     return;
   }
@@ -202,8 +212,6 @@ void setup()
   {
     // ftpSrv.begin("esp8266","esp8266");
   }
-
-
 
   // -------------------------------------------------------------------
   // SETUP MQTT
@@ -221,7 +229,7 @@ void setup()
   // wifi_setup();
 
   SPIFFS.begin(); // Not really needed, checked inside library and started if needed
-  
+
   // WiFi.setSleepMode(WIFI_NONE_SLEEP);
   ESPHTTPServer.begin(&SPIFFS);
 
@@ -236,7 +244,6 @@ void setup()
   save_system_info();
 
   DEBUGLOG("Setup done!");
-
 }
 
 bool oldState;
@@ -246,20 +253,19 @@ bool state1000ms;
 bool tick500ms;
 // bool tick1000ms;
 
-
 void pingFault(void) {}
 
 void loop()
 {
   timeLoop();
-  
+
   static bool enablePing = true;
   if (WiFi.status() == WL_CONNECTED && enablePing)
   {
     startPingAlive();
     enablePing = false;
   }
-  
+
   utcTime = now;
 
   static unsigned long prevTimer500ms = 0;
@@ -267,7 +273,8 @@ void loop()
 
   static time_t prevDisplay;
 
-  if (utcTime != prevDisplay) {
+  if (utcTime != prevDisplay)
+  {
     unsigned long currMilis = millis();
     prevTimer500ms = currMilis;
     // prevTimer1000ms = currMilis;
@@ -275,17 +282,21 @@ void loop()
     prevDisplay = utcTime;
   }
 
-  if (millis() < prevTimer500ms + 500) {
+  if (millis() < prevTimer500ms + 500)
+  {
     state500ms = true;
   }
-  else {
+  else
+  {
     state500ms = false;
   }
 
-  if (millis() < prevTimer500ms + 1000) {
+  if (millis() < prevTimer500ms + 1000)
+  {
     state1000ms = true;
   }
-  else {
+  else
+  {
     state1000ms = false;
   }
 
@@ -299,8 +310,8 @@ void loop()
   //    digitalWrite(led, LOW);
   //  }
 
-  if (tick1000ms) {
-
+  if (tick1000ms)
+  {
   }
 
   ESPHTTPServer.handle();

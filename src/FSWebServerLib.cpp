@@ -17,7 +17,7 @@ static AsyncClient *bClient = NULL;
 
 void runAsyncClientEmoncms()
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
   if (aClient) //client already exists
     return;
 
@@ -53,7 +53,7 @@ void runAsyncClientEmoncms()
     },
                    NULL);
 
-    //construct HTTP request for THINGSPEAK
+    //construct HTTP request for EmonCMS
     File file = SPIFFS.open("/emoncms.json", "r");
     if (!file)
     {
@@ -63,6 +63,7 @@ void runAsyncClientEmoncms()
     size_t size = file.size();
     char buf[size];
     file.readBytes(buf, size);
+    buf[size] = '\0';
     file.close();
 
     DynamicJsonBuffer jsonBuffer;
@@ -89,7 +90,7 @@ void runAsyncClientEmoncms()
 
     size_t len = key.measureLength();
     char bufFulljson[len + 1];
-    key.printTo(bufFulljson, len);
+    key.printTo(bufFulljson, sizeof(bufFulljson));
 
     StreamString output;
     if (output.reserve(1024))
@@ -101,7 +102,7 @@ void runAsyncClientEmoncms()
                     apikey,
                     bufFulljson,
                     host);
-      DEBUGLOG("%s\n", output.c_str());
+      DEBUGLOG("%s\r\n", output.c_str());
       client->write(output.c_str());
     }
   },
@@ -118,7 +119,7 @@ void runAsyncClientEmoncms()
 
 void runAsyncClientThingspeak()
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
   if (bClient) //client already exists
     return;
 
@@ -166,9 +167,10 @@ void runAsyncClientThingspeak()
     size_t size = file.size();
     char buf[size];
     file.readBytes(buf, size);
+    buf[size] = '\0';
     file.close();
 
-    StaticJsonBuffer<512> jsonBuffer;
+    StaticJsonBuffer<1024> jsonBuffer;
     JsonObject &json = jsonBuffer.parseObject(buf);
     if (!json.success())
     {
@@ -203,7 +205,7 @@ void runAsyncClientThingspeak()
                     online,
                     host,
                     apikey);
-      DEBUGLOG("%s\n", output.c_str());
+      DEBUGLOG("%s\r\n", output.c_str());
       client->write(output.c_str());
       // ws.textAll(output.c_str());
     }
@@ -232,17 +234,17 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
   else if (type == WS_EVT_DISCONNECT)
   {
     //client disconnected
-    //os_printf("ws[%s][%u] disconnect: %u\n", server->url(), client->id());
+    //os_printf("ws[%s][%u] disconnect: %u\r\n", server->url(), client->id());
   }
   else if (type == WS_EVT_ERROR)
   {
     //error was received from the other end
-    //os_printf("ws[%s][%u] error(%u): %s\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
+    //os_printf("ws[%s][%u] error(%u): %s\r\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
   }
   else if (type == WS_EVT_PONG)
   {
     //pong message was received (in response to a ping request maybe)
-    //os_printf("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len, (len)?(char*)data:"");
+    //os_printf("ws[%s][%u] pong[%u]: %s\r\n", server->url(), client->id(), len, (len)?(char*)data:"");
   }
   else if (type == WS_EVT_DATA)
   {
@@ -255,7 +257,7 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
       if (info->opcode == WS_TEXT)
       {
         data[len] = 0;
-        os_printf("%s\n", (char *)data);
+        os_printf("%s\r\n", (char *)data);
       }
       else
       {
@@ -263,7 +265,7 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
         {
           os_printf("%02x ", data[i]);
         }
-        os_printf("\n");
+        os_printf("\r\n");
       }
       if (info->opcode == WS_TEXT)
         client->text(FPSTR(pgm_got_text_message));
@@ -286,7 +288,7 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
       if (info->message_opcode == WS_TEXT)
       {
         data[len] = 0;
-        //os_printf("%s\n", (char*)data);
+        //os_printf("%s\r\n", (char*)data);
       }
       else
       {
@@ -425,7 +427,7 @@ void AsyncFSWebServer::begin(FS *fs)
       String fileName = dir.fileName();
       size_t fileSize = dir.fileSize();
 
-      DEBUGLOG("FS File: %s, size: %s\n", fileName.c_str(), formatBytes(fileSize).c_str());
+      DEBUGLOG("FS File: %s, size: %s\r\n", fileName.c_str(), formatBytes(fileSize).c_str());
     }
     DEBUGLOG("\n");
   }
@@ -486,11 +488,11 @@ void AsyncFSWebServer::begin(FS *fs)
     DEBUGLOG("Set Wifi mode to WIFI_STA\n", _config.hostname);
     //WiFi.hostname("GAHE1");
     WiFi.hostname(_config.hostname);
-    DEBUGLOG("Setting STA hostname to: %s\n", _config.hostname.c_str());
+    DEBUGLOG("Setting STA hostname to: %s\r\n", _config.hostname.c_str());
     // WiFi.begin(esid.c_str(), epass.c_str());
     // WiFi.begin(_config.ssid.c_str(), _config.pass.c_str());
     WiFi.begin(_config.ssid, _config.password);
-    DEBUGLOG("Connecting to: %s, pass: %s\n", _config.ssid, _config.password);
+    DEBUGLOG("Connecting to: %s, pass: %s\r\n", _config.ssid, _config.password);
     WiFi.waitForConnectResult();
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -499,7 +501,7 @@ void AsyncFSWebServer::begin(FS *fs)
   }
 
   DEBUGLOG("Open http://");
-  DEBUGLOG("%s\n", _config.hostname);
+  DEBUGLOG("%s\r\n", _config.hostname);
   DEBUGLOG(".local/edit to see the file browser\r\n");
   DEBUGLOG("Flash chip size: %u\r\n", ESP.getFlashChipRealSize());
   DEBUGLOG("Scketch size: %u\r\n", ESP.getSketchSize());
@@ -532,18 +534,18 @@ void AsyncFSWebServer::begin(FS *fs)
 
 bool AsyncFSWebServer::load_config()
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
   return true;
 }
 
 void AsyncFSWebServer::defaultConfig()
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 }
 
 bool AsyncFSWebServer::save_config()
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
   return true;
 }
 
@@ -561,7 +563,7 @@ bool AsyncFSWebServer::loadHTTPAuth()
   }
 
   size_t size = configFile.size();
-  DEBUGLOG("JSON secret file size: %d bytes\n", size);
+  DEBUGLOG("JSON secret file size: %d bytes\r\n", size);
   if (size > 256)
   {
     DEBUGLOG("Secret file size is too large\r\n");
@@ -570,8 +572,8 @@ bool AsyncFSWebServer::loadHTTPAuth()
     _httpAuth.wwwPassword = "";
     configFile.close();
     return false;
-  }  
-  
+  }
+
   StaticJsonBuffer<256> jsonBuffer;
   JsonObject &json = jsonBuffer.parseObject(configFile);
   configFile.close();
@@ -611,7 +613,7 @@ bool AsyncFSWebServer::loadHTTPAuth()
     DEBUGLOG("User: %s\r\n", _httpAuth.wwwUsername.c_str());
     DEBUGLOG("Pass: %s\r\n", _httpAuth.wwwPassword.c_str());
   }
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   return true;
 }
@@ -624,7 +626,7 @@ void AsyncFSWebServer::handle()
 
 void AsyncFSWebServer::configureWifiAP()
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
   //WiFi.disconnect();
   WiFi.mode(WIFI_AP);
   String APname = _apConfig.APssid + (String)ESP.getChipId();
@@ -660,7 +662,7 @@ void AsyncFSWebServer::ConfigureOTA(String password)
   if (password != "")
   {
     ArduinoOTA.setPassword(password.c_str());
-    DEBUGLOG("OTA password set %s\n", password.c_str());
+    DEBUGLOG("OTA password set %s\r\n", password.c_str());
   }
 
 #ifndef RELEASE
@@ -722,7 +724,7 @@ void AsyncFSWebServer::onWiFiDisconnected(WiFiEventStationModeDisconnected data)
   {
     digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
   }
-  //DBG_OUTPUT_PORT.printf("Led %s off\n", CONNECTION_LED);
+  //DBG_OUTPUT_PORT.printf("Led %s off\r\n", CONNECTION_LED);
   //flashLED(config.connectionLed, 2, 100);
   if (wifiDisconnectedSince == 0)
   {
@@ -772,12 +774,12 @@ void AsyncFSWebServer::send_general_configuration_values_html(AsyncWebServerRequ
   String values = "";
   values += "devicename|" + (String)_config.hostname + "|input\n";
   request->send(200, "text/plain", values);
-  DEBUGLOG("%s\n", __FUNCTION__);
+  DEBUGLOG("%s\r\n", __FUNCTION__);
 }
 
 void AsyncFSWebServer::send_network_configuration_values_html(AsyncWebServerRequest *request)
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   File configFile = _fs->open(CONFIG_FILE, "r");
   if (!configFile)
@@ -984,7 +986,7 @@ bool AsyncFSWebServer::save_config_time()
 
 void AsyncFSWebServer::send_config_network(AsyncWebServerRequest *request)
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   AsyncResponseStream *response = request->beginResponseStream("application/json");
   DynamicJsonBuffer jsonBuffer;
@@ -1006,7 +1008,7 @@ void AsyncFSWebServer::send_config_network(AsyncWebServerRequest *request)
 
 void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *request)
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
   String state = "N/A";
   String Networks = "";
   if (WiFi.status() == 0)
@@ -1037,7 +1039,7 @@ void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *
 
 void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *request)
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   AsyncResponseStream *response = request->beginResponseStream("application/json");
   DynamicJsonBuffer jsonBuffer;
@@ -1096,7 +1098,7 @@ String AsyncFSWebServer::getMacAddress()
 
 void AsyncFSWebServer::send_NTP_configuration_values_html(AsyncWebServerRequest *request)
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   AsyncResponseStream *response = request->beginResponseStream("text/json");
   DynamicJsonBuffer jsonBuffer;
@@ -1174,7 +1176,7 @@ boolean AsyncFSWebServer::checkRange(String Value)
 
 void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *request)
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   //List all parameters
   int params = request->params();
@@ -1186,7 +1188,7 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
     {
       AsyncWebParameter *p = request->getParam(i);
 
-      DEBUGLOG("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+      DEBUGLOG("POST[%s]: %s\r\n", p->name().c_str(), p->value().c_str());
 
       const char *name = p->name().c_str();
       uint8_t len = strlen(name);
@@ -1325,7 +1327,7 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
 
 void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *request)
 {
-  DEBUGLOG("%s\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   if (!checkAuth(request))
   {
@@ -1345,7 +1347,7 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
     {
       AsyncWebParameter *p = request->getParam(i);
 
-      DEBUGLOG("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+      DEBUGLOG("POST[%s]: %s\r\n", p->name().c_str(), p->value().c_str());
 
       const char *name = p->name().c_str();
       uint8_t len = strlen(name);
@@ -1427,7 +1429,7 @@ void AsyncFSWebServer::send_wwwauth_configuration_values_html(AsyncWebServerRequ
 
   request->send(200, "text/plain", values);
 
-  DEBUGLOG("%s\n", __FUNCTION__);
+  DEBUGLOG("%s\r\n", __FUNCTION__);
 }
 
 void AsyncFSWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *request)
@@ -1442,13 +1444,13 @@ void AsyncFSWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *re
       if (request->argName(i) == "wwwuser")
       {
         _httpAuth.wwwUsername = urldecode(request->arg(i));
-        DEBUGLOG("User: %s\n", _httpAuth.wwwUsername.c_str());
+        DEBUGLOG("User: %s\r\n", _httpAuth.wwwUsername.c_str());
         continue;
       }
       if (request->argName(i) == "wwwpass")
       {
         _httpAuth.wwwPassword = urldecode(request->arg(i));
-        DEBUGLOG("Pass: %s\n", _httpAuth.wwwPassword.c_str());
+        DEBUGLOG("Pass: %s\r\n", _httpAuth.wwwPassword.c_str());
         continue;
       }
       if (request->argName(i) == "wwwauth")
@@ -1507,8 +1509,8 @@ void AsyncFSWebServer::send_update_firmware_values_html(AsyncWebServerRequest *r
   bool updateOK = maxSketchSpace < ESP.getFreeSketchSpace();
   StreamString result;
   Update.printError(result);
-  DEBUGLOG("--MaxSketchSpace: %d\n", maxSketchSpace);
-  DEBUGLOG("--Update error = %s\n", result.c_str());
+  DEBUGLOG("--MaxSketchSpace: %d\r\n", maxSketchSpace);
+  DEBUGLOG("--Update error = %s\r\n", result.c_str());
   values += "remupd|" + (String)((updateOK) ? "OK" : "ERROR") + "|div\n";
 
   if (Update.hasError())
@@ -1522,7 +1524,7 @@ void AsyncFSWebServer::send_update_firmware_values_html(AsyncWebServerRequest *r
   }
 
   request->send(200, "text/plain", values);
-  DEBUGLOG("%s\n", __FUNCTION__);
+  DEBUGLOG("%s\r\n", __FUNCTION__);
 }
 
 void AsyncFSWebServer::setUpdateMD5(AsyncWebServerRequest *request)
@@ -1592,13 +1594,13 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
     if (Update.end(true))
     { //true to set the size to the current progress
       updateHash = Update.md5String();
-      PRINT("Upload finished. Calculated MD5: %s\n", updateHash.c_str());
-      PRINT("Update Success: %u\nRebooting...\n", request->contentLength());
+      PRINT("Upload finished. Calculated MD5: %s\r\n", updateHash.c_str());
+      PRINT("Update Success: %u\r\nRebooting...\r\n", request->contentLength());
     }
     else
     {
       updateHash = Update.md5String();
-      PRINT("Upload failed. Calculated MD5: %s\n", updateHash.c_str());
+      PRINT("Upload failed. Calculated MD5: %s\r\n", updateHash.c_str());
       Update.printError(DEBUGPORT);
     }
   }
@@ -1931,12 +1933,12 @@ void AsyncFSWebServer::serverInit()
     {
       DEBUGLOG("UNKNOWN");
     }
-    DEBUGLOG(" http://%s%s\n", request->host().c_str(), request->url().c_str());
+    DEBUGLOG(" http://%s%s\r\n", request->host().c_str(), request->url().c_str());
 
     if (request->contentLength())
     {
-      DEBUGLOG("_CONTENT_TYPE: %s\n", request->contentType().c_str());
-      DEBUGLOG("_CONTENT_LENGTH: %u\n", request->contentLength());
+      DEBUGLOG("_CONTENT_TYPE: %s\r\n", request->contentType().c_str());
+      DEBUGLOG("_CONTENT_LENGTH: %u\r\n", request->contentLength());
     }
 
     int i;
@@ -1946,7 +1948,7 @@ void AsyncFSWebServer::serverInit()
     for (i = 0; i < headers; i++)
     {
       AsyncWebHeader *h = request->getHeader(i);
-      DEBUGLOG("_HEADER[%s]: %s\n", h->name().c_str(), h->value().c_str());
+      DEBUGLOG("_HEADER[%s]: %s\r\n", h->name().c_str(), h->value().c_str());
     }
 #endif
 
@@ -1956,15 +1958,15 @@ void AsyncFSWebServer::serverInit()
       AsyncWebParameter *p = request->getParam(i);
       if (p->isFile())
       {
-        DEBUGLOG("_FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
+        DEBUGLOG("_FILE[%s]: %s, size: %u\r\n", p->name().c_str(), p->value().c_str(), p->size());
       }
       else if (p->isPost())
       {
-        DEBUGLOG("_POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        DEBUGLOG("_POST[%s]: %s\r\n", p->name().c_str(), p->value().c_str());
       }
       else
       {
-        DEBUGLOG("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        DEBUGLOG("_GET[%s]: %s\r\n", p->name().c_str(), p->value().c_str());
       }
     }
 
@@ -1982,18 +1984,18 @@ void AsyncFSWebServer::serverInit()
 
   onFileUpload([this](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final) {
     if (!index)
-      DEBUGLOG("UploadStart: %s\n", filename.c_str());
+      DEBUGLOG("UploadStart: %s\r\n", filename.c_str());
     DEBUGLOG("%s", (const char *)data);
     if (final)
-      DEBUGLOG("UploadEnd: %s (%u)\n", filename.c_str(), index + len);
+      DEBUGLOG("UploadEnd: %s (%u)\r\n", filename.c_str(), index + len);
   });
 
   onRequestBody([this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
     if (!index)
-      DEBUGLOG("BodyStart: %u\n", total);
+      DEBUGLOG("BodyStart: %u\r\n", total);
     DEBUGLOG("%s", (const char *)data);
     if (index + len == total)
-      DEBUGLOG("BodyEnd: %u\n", total);
+      DEBUGLOG("BodyEnd: %u\r\n", total);
   });
 
   //begin(); //--> Not here

@@ -58,14 +58,14 @@ float TimezoneFloat()
 {
     time_t rawtime;
     struct tm *timeinfo;
-    char buffer[6];
+    char buffer[10];
 
     time(&rawtime);
     timeinfo = localtime(&rawtime);
 
     strftime(buffer, 6, "%z", timeinfo);
 
-    char bufTzHour[4];
+    char bufTzHour[10];
     strncpy(bufTzHour, buffer, 3);
     int8_t hour = atoi(bufTzHour);
 

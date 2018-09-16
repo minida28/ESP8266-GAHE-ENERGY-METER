@@ -42,6 +42,7 @@
 #include "timehelper.h"
 #include "sntphelper.h"
 #include "PingAlive.h"
+#include <pgmspace.h>
 
 #define PRINTPORT Serial1
 #define DEBUGPORT Serial1
@@ -50,38 +51,37 @@
 #define RELEASEMQTT
 #define RELEASEMODBUS
 
-#define PROGMEM_T __attribute__((section(".irom.text.template")))
-#define PRINT(fmt, ...)                       \
-  {                                           \
-    static const char pfmt[] PROGMEM_T = fmt; \
-    PRINTPORT.printf_P(pfmt, ##__VA_ARGS__);  \
+#define PRINT(fmt, ...)                      \
+  {                                          \
+    static const char pfmt[] PROGMEM = fmt;  \
+    PRINTPORT.printf_P(pfmt, ##__VA_ARGS__); \
   }
 
 #ifndef RELEASE
-#define DEBUGLOG(fmt, ...)                    \
-  {                                           \
-    static const char pfmt[] PROGMEM_T = fmt; \
-    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__);  \
+#define DEBUGLOG(fmt, ...)                   \
+  {                                          \
+    static const char pfmt[] PROGMEM = fmt;  \
+    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
   }
 #else
 #define DEBUGLOG(...)
 #endif
 
 #ifndef RELEASEMQTT
-#define DEBUGMQTT(fmt, ...)                   \
-  {                                           \
-    static const char pfmt[] PROGMEM_T = fmt; \
-    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__);  \
+#define DEBUGMQTT(fmt, ...)                  \
+  {                                          \
+    static const char pfmt[] PROGMEM = fmt;  \
+    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
   }
 #else
 #define DEBUGMQTT(...)
 #endif
 
 #ifndef RELEASEMODBUS
-#define DEBUGMODBUS(fmt, ...)                 \
-  {                                           \
-    static const char pfmt[] PROGMEM_T = fmt; \
-    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__);  \
+#define DEBUGMODBUS(fmt, ...)                \
+  {                                          \
+    static const char pfmt[] PROGMEM = fmt;  \
+    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
   }
 #else
 #define DEBUGMODBUS(...)
