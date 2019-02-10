@@ -72,8 +72,8 @@ typedef struct {
   char publish_2_payload[64] = "";
   char subscribe_1_topic[64] = "/rumah/cmd/kwh1/wattthreshold";
   uint8_t subscribe_1_qos = 2;
-  char subscribe_2_topic[64];
-  uint8_t subscribe_2_qos;
+  char subscribe_2_topic[64] = "/rumah/cmd/kwh1/currentthreshold";
+  uint8_t subscribe_2_qos = 2;
 
   char pub_param[11][18] = {"voltage","ampere","watt","var","frequency","pstkwh","pstkvarh","ngtkvarh","powerfactor","apparentpower","unk2"};
   char pub_default_basetopic[32] = "/rumah/sts/kwh1/";
@@ -85,6 +85,7 @@ typedef struct {
   char pub_prefix_10s[5] = "10s";
   char pub_prefix_15s[5] = "15s";
   char powerthreshold_param[24] = "wattthreshold";
+  char currentthreshold_param[24] = "currentthreshold";
 } strConfigMqtt;
 
 extern  strConfigMqtt configMqtt;
@@ -130,6 +131,7 @@ extern bool mqtt_setup();
 extern bool mqtt_reconnect();
 
 extern uint16_t wattThreshold;
+extern float currentThreshold;
 
 
 

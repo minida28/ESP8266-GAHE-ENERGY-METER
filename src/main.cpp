@@ -12,6 +12,21 @@
 
 // #include <ESP8266FtpServer.h>
 
+
+#define RELEASE
+
+#define DEBUGPORT Serial1
+
+#ifndef RELEASE
+#define DEBUGLOG(fmt, ...)                   \
+  {                                          \
+    static const char pfmt[] PROGMEM = fmt;  \
+    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
+  }
+#else
+#define DEBUGLOG(...)
+#endif
+
 // FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
 
 int pgm_lastIndexOf(uint8_t c, const char *p)
@@ -63,7 +78,7 @@ void display_srcfile_details(void)
 
 bool save_system_info()
 {
-  PRINT("%s\r\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   // const char* pathtofile = PSTR(pgm_filesystemoverview);
 
@@ -73,12 +88,12 @@ bool save_system_info()
     file = SPIFFS.open(FPSTR(pgm_systeminfofile), "w");
     if (!file)
     {
-      PRINT("Failed to open config file for writing\r\n");
+      DEBUGLOG("Failed to open config file for writing\r\n");
       file.close();
       return false;
     }
     //create blank json file
-    PRINT("Creating user config file for writing\r\n");
+    DEBUGLOG("Creating user config file for writing\r\n");
     file.print("{}");
     file.close();
   }
@@ -86,7 +101,7 @@ bool save_system_info()
   file = SPIFFS.open(FPSTR(pgm_systeminfofile), "w");
   if (!file)
   {
-    PRINT("Failed to open config file");
+    DEBUGLOG("Failed to open config file");
     return false;
   }
 
@@ -216,8 +231,7 @@ void setup()
   // -------------------------------------------------------------------
   // SETUP MQTT
   // -------------------------------------------------------------------
-  Serial.println(F("Setup MQTT..."));
-
+  DEBUGLOG("Setup MQTT...\r\n");
   mqtt_setup();
 
   // -------------------------------------------------------------------
@@ -226,20 +240,15 @@ void setup()
 
   config_load_settings();
 
-  // wifi_setup();
-
-  SPIFFS.begin(); // Not really needed, checked inside library and started if needed
-
   // WiFi.setSleepMode(WIFI_NONE_SLEEP);
-  ESPHTTPServer.begin(&SPIFFS);
+
+  DEBUGLOG("Starting ESPHTTPServer...\r\n");
+  ESPHTTPServer.start(&SPIFFS);
 
   modbus_setup();
 
   //--- DHT Adafruit
   dht_setup();
-
-  // Initialise MQTT
-  // mqtt_setup();
 
   save_system_info();
 
@@ -314,7 +323,7 @@ void loop()
   {
   }
 
-  ESPHTTPServer.handle();
+  ESPHTTPServer.loop();
   // ftpSrv.handleFTP();
   modbus_update();
   modbus_loop();

@@ -51,7 +51,7 @@ void time_is_set(void)
 {
     gettimeofday(&cbtime, NULL);
     cbtime_set = true;
-    Serial.println(F("------------------ settimeofday() was called ------------------"));
+    Serial.println(F("\r\n------------------ settimeofday() was called ------------------\r\n"));
 }
 
 float TimezoneFloat()

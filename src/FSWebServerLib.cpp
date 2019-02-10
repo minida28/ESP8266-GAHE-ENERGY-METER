@@ -6,12 +6,39 @@
 #include "modbus.h"
 #include "mqtt.h"
 
+#define RELEASE
+
+#define DEBUGPORT Serial
+#define PRINTPORT Serial
+
+#define PRINT(fmt, ...)                      \
+  {                                          \
+    static const char pfmt[] PROGMEM = fmt;  \
+    PRINTPORT.printf_P(pfmt, ##__VA_ARGS__); \
+  }
+
+#ifndef RELEASE
+#define DEBUGLOG(fmt, ...)                   \
+  {                                          \
+    static const char pfmt[] PROGMEM = fmt;  \
+    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
+  }
+#else
+#define DEBUGLOG(...)
+#endif
+
 uint16_t num;
 
 #define PARAMETER_XML_FILE "/parameter2.xml"
 
 DNSServer dnsServer;
 AsyncWebSocket ws("/ws");
+
+bool DEBUGVIAWS = true;
+
+// How to use the async client?
+// https://github.com/me-no-dev/ESPAsyncTCP/issues/18
+
 static AsyncClient *aClient = NULL;
 static AsyncClient *bClient = NULL;
 
@@ -19,13 +46,25 @@ void runAsyncClientEmoncms()
 {
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
   if (aClient) //client already exists
-    return;
+  {
+    // return;
+
+    if (DEBUGVIAWS)
+    {
+      ws.textAll(PSTR("EmonCMS client already exists, closing the client...\r\n"));
+    }
+
+    aClient->close(true);
+    AsyncClient *client = aClient;
+    aClient = NULL;
+    delete client;
+  }
 
   aClient = new AsyncClient();
   if (!aClient) //could not allocate client
     return;
 
-  aClient->onError([](void *arg, AsyncClient *client, int error) {
+  aClient->onError([](void *arg, AsyncClient *client, err_t error) {
     DEBUGLOG("Connect Error\r\n");
     aClient = NULL;
     delete client;
@@ -34,10 +73,18 @@ void runAsyncClientEmoncms()
 
   aClient->onConnect([](void *arg, AsyncClient *client) {
     DEBUGLOG("Connected\r\n");
+    if (DEBUGVIAWS)
+    {
+      ws.textAll(PSTR("EmonCMS connected\r\n"));
+    }
     aClient->onError(NULL, NULL);
 
     client->onDisconnect([](void *arg, AsyncClient *c) {
       DEBUGLOG("\nDisconnected\r\n");
+      if (DEBUGVIAWS)
+      {
+        ws.textAll(PSTR("EmonCMS Disconnected\r\n"));
+      }
       aClient = NULL;
       delete c;
     },
@@ -50,6 +97,56 @@ void runAsyncClientEmoncms()
       //  for (size_t i = 0; i < len; i++) {
       //    Serial.write(d[i]);
       //  }
+
+      // if (DEBUGVIAWS)
+      // {
+      //   char receivedData[len + 1];
+
+      //   uint8_t *d = (uint8_t *)data;
+      //   for (size_t i = 0; i < len; i++)
+      //   {
+      //     receivedData[i] = (char)d[i];
+      //   }
+      //   receivedData[len] = '\0';
+
+      //   char buf[32];
+      //   sprintf_P(buf, PSTR("EmonCMS onData, len=%u\r\n"), len);
+      //   ws.textAll(buf);
+      //   ws.textAll("\r\n");
+      //   ws.textAll(receivedData);
+      //   ws.textAll("\r\n");
+      // }
+
+      char temp[len + 1];
+
+      uint8_t *d = (uint8_t *)data;
+      for (size_t i = 0; i < len; i++)
+      {
+        static int j = 0;
+        char z = (char)d[i];
+        temp[j] = z;
+        j++;
+        if (z == '\n')
+        {
+          temp[j + 1] = '\0';
+          j = 0;
+          char status[] = "HTTP/1.1 200 OK";
+          int len = strlen(status);
+          if (strncmp(temp, status, len) == 0)
+          {
+            if (DEBUGVIAWS)
+              ws.textAll(status);
+
+            aClient->close(true);
+
+            // AsyncClient *client = aClient;
+            // aClient = NULL;
+            // delete c;
+
+            break;
+          }
+        }
+      }
     },
                    NULL);
 
@@ -66,7 +163,8 @@ void runAsyncClientEmoncms()
     buf[size] = '\0';
     file.close();
 
-    DynamicJsonBuffer jsonBuffer;
+    // DynamicJsonBuffer jsonBuffer;
+    StaticJsonBuffer<1152> jsonBuffer;
     JsonObject &json = jsonBuffer.parseObject(buf);
     if (!json.success())
     {
@@ -93,7 +191,7 @@ void runAsyncClientEmoncms()
     key.printTo(bufFulljson, sizeof(bufFulljson));
 
     StreamString output;
-    if (output.reserve(1024))
+    if (output.reserve(512))
     {
       output.printf(templaterequest,
                     method,
@@ -104,6 +202,11 @@ void runAsyncClientEmoncms()
                     host);
       DEBUGLOG("%s\r\n", output.c_str());
       client->write(output.c_str());
+      if (DEBUGVIAWS)
+      {
+        ws.textAll(PSTR("EmonCMS send request\r\n"));
+        ws.textAll(output.c_str());
+      }
     }
   },
                      NULL);
@@ -111,6 +214,10 @@ void runAsyncClientEmoncms()
   if (!aClient->connect("emoncms.org", 80))
   {
     DEBUGLOG("Connect Fail\r\n");
+    if (DEBUGVIAWS)
+    {
+      ws.textAll(PSTR("EmonCMS Connect Fail\r\n"));
+    }
     AsyncClient *client = aClient;
     aClient = NULL;
     delete client;
@@ -121,14 +228,35 @@ void runAsyncClientThingspeak()
 {
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
   if (bClient) //client already exists
-    return;
+  {
+    // return;
+
+    if (DEBUGVIAWS)
+    {
+      ws.textAll(PSTR("Thingspeak client already exists, closing the client...\r\n"));
+    }
+    bClient->close(true);
+    AsyncClient *client = bClient;
+    bClient = NULL;
+    delete client;
+  }
 
   bClient = new AsyncClient();
   if (!bClient) //could not allocate client
+  {
+    if (DEBUGVIAWS)
+    {
+      ws.textAll(PSTR("Could not allocate client Thingspeak\r\n"));
+    }
     return;
+  }
 
-  bClient->onError([](void *arg, AsyncClient *client, int error) {
+  bClient->onError([](void *arg, AsyncClient *client, err_t error) {
     DEBUGLOG("Connect Error\r\n");
+    if (DEBUGVIAWS)
+    {
+      ws.textAll(PSTR("Connect Thingspeak Error\r\n"));
+    }
     bClient = NULL;
     delete client;
   },
@@ -136,10 +264,18 @@ void runAsyncClientThingspeak()
 
   bClient->onConnect([](void *arg, AsyncClient *client) {
     DEBUGLOG("Connected\r\n");
+    if (DEBUGVIAWS)
+    {
+      ws.textAll(PSTR("Thingspeak connected\r\n"));
+    }
     bClient->onError(NULL, NULL);
 
     client->onDisconnect([](void *arg, AsyncClient *c) {
       DEBUGLOG("\nDisconnected\r\n");
+      if (DEBUGVIAWS)
+      {
+        ws.textAll(PSTR("Thingspeak Disconnected\r\n"));
+      }
       bClient = NULL;
       delete c;
     },
@@ -148,17 +284,68 @@ void runAsyncClientThingspeak()
     client->onData([](void *arg, AsyncClient *c, void *data, size_t len) {
       DEBUGLOG("\r\nData: ");
       DEBUGLOG("%d", len);
+
       // uint8_t *d = (uint8_t *)data;
       //  for (size_t i = 0; i < len; i++) {
       //    Serial.write(d[i]);
       //  }
+
+      // if (DEBUGVIAWS)
+      // {
+      //   char receivedData[len + 1];
+
+      //   uint8_t *d = (uint8_t *)data;
+      //   for (size_t i = 0; i < len; i++)
+      //   {
+      //     receivedData[i] = (char)d[i];
+      //   }
+      //   receivedData[len] = '\0';
+
+      //   char buf[32];
+      //   sprintf_P(buf, PSTR("Thingspeak onData, len=%u\r\n"), len);
+      //   ws.textAll(buf);
+      //   ws.textAll("\r\n");
+      //   ws.textAll(receivedData);
+      //   ws.textAll("\r\n");
+      // }
+
+      char temp[len + 1];
+
+      uint8_t *d = (uint8_t *)data;
+      for (size_t i = 0; i < len; i++)
+      {
+        static int j = 0;
+        char z = (char)d[i];
+        temp[j] = z;
+        j++;
+        if (z == '\n')
+        {
+          temp[j + 1] = '\0';
+          j = 0;
+          char status[] = "HTTP/1.1 200 OK";
+          int len = strlen(status);
+          if (strncmp(temp, status, len) == 0)
+          {
+            if (DEBUGVIAWS)
+              ws.textAll(status);
+
+            bClient->close(true);
+
+            // AsyncClient *client = bClient;
+            // bClient = NULL;
+            // delete c;
+
+            break;
+          }
+        }
+      }
     },
                    NULL);
 
     //Construct HTTP request to THINGSPEAK
     //"POST /update?field4=40&status=\"Horeeee bisa lagi\" HTTP/1.1\r\nHost: api.thingspeak.com\r\nX-THINGSPEAKAPIKEY:XJP1DKEH9OGVBGSX\r\n\r\n");
 
-    File file = SPIFFS.open("/thingspeak.json", "r");
+    File file = SPIFFS.open(PSTR("/thingspeak.json"), "r");
     if (!file)
     {
       PRINT("Failed to open config file\r\n");
@@ -170,7 +357,7 @@ void runAsyncClientThingspeak()
     buf[size] = '\0';
     file.close();
 
-    StaticJsonBuffer<1024> jsonBuffer;
+    StaticJsonBuffer<512> jsonBuffer;
     JsonObject &json = jsonBuffer.parseObject(buf);
     if (!json.success())
     {
@@ -189,7 +376,7 @@ void runAsyncClientThingspeak()
     //const char* online = FPSTR(pgm_online);
 
     StreamString output;
-    if (output.reserve(1024))
+    if (output.reserve(512))
     {
       output.printf(templaterequest,
                     method,
@@ -207,14 +394,22 @@ void runAsyncClientThingspeak()
                     apikey);
       DEBUGLOG("%s\r\n", output.c_str());
       client->write(output.c_str());
-      // ws.textAll(output.c_str());
+      if (DEBUGVIAWS)
+      {
+        ws.textAll(PSTR("Thingspeak send request\r\n"));
+        ws.textAll(output.c_str());
+      }
     }
   },
                      NULL);
 
-  if (!bClient->connect("api.thingspeak.com", 80))
+  if (!bClient->connect(PSTR("api.thingspeak.com"), 80))
   {
     DEBUGLOG("Connect Fail\r\n");
+    if (DEBUGVIAWS)
+    {
+      ws.textAll(PSTR("Thingspeak connect fail\r\n"));
+    }
     AsyncClient *client = bClient;
     bClient = NULL;
     delete client;
@@ -392,7 +587,7 @@ void flashLED(int pin, int times, int delayTime)
   digitalWrite(pin, oldState); // Turn on LED
 }
 
-void AsyncFSWebServer::begin(FS *fs)
+void AsyncFSWebServer::start(FS *fs)
 {
   _fs = fs;
 
@@ -485,10 +680,10 @@ void AsyncFSWebServer::begin(FS *fs)
     // wifi_setup();
     WiFi.setAutoReconnect(true);
     WiFi.mode(WIFI_STA);
-    DEBUGLOG("Set Wifi mode to WIFI_STA\n", _config.hostname);
+    DEBUGLOG("Set Wifi mode to WIFI_STA\r\n");
     //WiFi.hostname("GAHE1");
     WiFi.hostname(_config.hostname);
-    DEBUGLOG("Setting STA hostname to: %s\r\n", _config.hostname.c_str());
+    DEBUGLOG("Setting STA hostname to: %s\r\n", _config.hostname);
     // WiFi.begin(esid.c_str(), epass.c_str());
     // WiFi.begin(_config.ssid.c_str(), _config.pass.c_str());
     WiFi.begin(_config.ssid, _config.password);
@@ -511,23 +706,24 @@ void AsyncFSWebServer::begin(FS *fs)
 
   ConfigureOTA(_httpAuth.wwwPassword.c_str());
 
-  //dnsServer.start(53, "*", WiFi.softAPIP());
+  dnsServer.start(53, "*", WiFi.softAPIP());
 
-  MDNS.addService("http", "tcp", 80);
+  // MDNS.addService("http", "tcp", 80);
 
   NBNS.begin(_config.hostname);
 
   // SSDP.schema(HTTP.client());
-  SSDP.setSchemaURL("ssdpxml");
+  SSDP.setSchemaURL(PSTR("ssdpxml"));
   SSDP.setHTTPPort(80);
-  SSDP.setDeviceType("upnp:rootdevice");
+  SSDP.setDeviceType(PSTR("upnp:rootdevice"));
   //  SSDP.setModelName(_config.hostname.c_str());
   //  SSDP.setModelNumber(FPSTR(modelNumber));
   SSDP.begin();
 
-  serverInit(); // Configure and start Web server
+  ESPHTTPServer.serverInit(); // Configure and start Web server
 
-  AsyncWebServer::begin();
+  // AsyncWebServer::begin();
+  // ESPHTTPServer.begin(fs);
 
   DEBUGLOG("END Setup\n");
 }
@@ -583,8 +779,8 @@ bool AsyncFSWebServer::loadHTTPAuth()
 #ifndef RELEASE
     String temp;
     json.prettyPrintTo(temp);
-    PRINT(temp);
-    PRINT("Failed to parse secret file\n");
+    PRINT("%s\r\n", temp.c_str());
+    PRINT("Failed to parse secret file\r\n");
 #endif // RELEASE
     _httpAuth.auth = false;
     _httpAuth.wwwUsername = "";
@@ -618,10 +814,44 @@ bool AsyncFSWebServer::loadHTTPAuth()
   return true;
 }
 
-void AsyncFSWebServer::handle()
+void AsyncFSWebServer::loop()
 {
   ArduinoOTA.handle();
   dnsServer.processNextRequest();
+
+  if (bClient)
+  {
+    static uint8_t bClientState = -1;
+
+    uint8_t state = bClient->state();
+    if (state != bClientState)
+    {
+      bClientState = state;
+      if (DEBUGVIAWS)
+      {
+        char buf[32];
+        sprintf_P(buf, PSTR("Thingspeak client state: %u"), bClientState);
+        ws.textAll(buf);
+      }
+    }
+  }
+
+  if (aClient)
+  {
+    static uint8_t aClientState = -1;
+
+    uint8_t state = aClient->state();
+    if (state != aClientState)
+    {
+      aClientState = state;
+      if (DEBUGVIAWS)
+      {
+        char buf[32];
+        sprintf_P(buf, PSTR("EmonCMS client state: %u"), aClientState);
+        ws.textAll(buf);
+      }
+    }
+  }
 }
 
 void AsyncFSWebServer::configureWifiAP()
@@ -1092,7 +1322,7 @@ String AsyncFSWebServer::getMacAddress()
   uint8_t mac[6];
   char macStr[18] = {0};
   WiFi.macAddress(mac);
-  sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  sprintf_P(macStr, PSTR("%02X:%02X:%02X:%02X:%02X:%02X"), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   return String(macStr);
 }
 
@@ -1228,7 +1458,7 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
     }
     //save settings
     save_config_network();
-    request->send(200, "text/plain", "OK");
+    request->send(200, PSTR("text/plain"), PSTR("OK"));
     return;
   }
   request->send(SPIFFS, request->url());
@@ -1310,6 +1540,7 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
                   bufPstkvarh,
                   bufNgtkvarh,
                   bufwattThreshold,
+                  bufCurrentThreshold,
                   bufRequestsPACKET3,
                   bufSuccessful_requestsPACKET3,
                   bufFailed_requestsPACKET3,
@@ -1403,7 +1634,7 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
 
 void AsyncFSWebServer::restart_esp(AsyncWebServerRequest *request)
 {
-  request->send_P(200, "text/html", Page_Restart);
+  request->send_P(200, PSTR("text/html"), Page_Restart);
   DEBUGLOG("%s\r\n", __FUNCTION__);
   mqttClient.disconnect();
   _evs.close();
@@ -1545,7 +1776,7 @@ void AsyncFSWebServer::setUpdateMD5(AsyncWebServerRequest *request)
       if (request->argName(i) == "size")
       {
         _updateSize = request->arg(i).toInt();
-        DEBUGLOG("Update size: %l\r\n", _updateSize);
+        DEBUGLOG("Update size: %i\r\n", _updateSize);
         continue;
       }
     }
@@ -1698,49 +1929,49 @@ void AsyncFSWebServer::serverInit()
   //      return request->requestAuthentication();
   //    this->send_meter_reading(request);
   //  });
-  on("/xml", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/xml"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_classic_xml_page(request);
   });
   //list directory
-  on("/list", HTTP_GET, [this](AsyncWebServerRequest *request) {
+  on(PSTR("/list"), HTTP_GET, [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->handleFileList(request);
   });
 
-  on("/admin/generalvalues", HTTP_GET, [this](AsyncWebServerRequest *request) {
+  on(PSTR("/admin/generalvalues"), HTTP_GET, [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_general_configuration_values_html(request);
   });
-  on("/admin/values", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/admin/values"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_network_configuration_values_html(request);
   });
-  on("/admin/connectionstate", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/admin/connectionstate"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_connection_state_values_html(request);
   });
-  on("/admin/infovalues", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/admin/infovalues"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_information_values_html(request);
   });
-  on("/admin/ntpvalues", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/admin/ntpvalues"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_NTP_configuration_values_html(request);
   });
-  on("/config.html", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/config.html"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_network_configuration_html(request);
   });
-  on("/scan", HTTP_GET, [](AsyncWebServerRequest *request) {
+  on(PSTR("/scan"), HTTP_GET, [](AsyncWebServerRequest *request) {
     String json = "[";
     int n = WiFi.scanComplete();
     if (n == WIFI_SCAN_FAILED)
@@ -1780,12 +2011,12 @@ void AsyncFSWebServer::serverInit()
   //    request->send(200, "text/plain", "restart wifi");
   //    wifi_restart();
   //  });
-  on("/ntp.html", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/ntp.html"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_NTP_configuration_html(request);
   });
-  on("/admin/restart", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/admin/restart"), [this](AsyncWebServerRequest *request) {
     DEBUGPORT.println(request->url());
     if (!this->checkAuth(request))
     {
@@ -1793,43 +2024,43 @@ void AsyncFSWebServer::serverInit()
     }
     this->restart_esp(request);
   });
-  on("/admin/wwwauth", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/admin/wwwauth"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_wwwauth_configuration_values_html(request);
   });
-  on("/admin", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/admin"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
-    request->send(SPIFFS, "/admin.html");
+    request->send(SPIFFS, PSTR("/admin.html"));
   });
-  on("/system.html", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/system.html"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_wwwauth_configuration_html(request);
   });
-  on("/update/updatepossible", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/update/updatepossible"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_update_firmware_values_html(request);
   });
-  on("/setmd5", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/setmd5"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     //DBG_OUTPUT_PORT.println("md5?");
     this->setUpdateMD5(request);
   });
-  on("/update", HTTP_GET, [this](AsyncWebServerRequest *request) {
+  on(PSTR("/update"), HTTP_GET, [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
-    request->send(SPIFFS, "/update.html");
+    request->send(SPIFFS, PSTR("/update.html"));
   });
-  on("/update", HTTP_POST, [this](AsyncWebServerRequest *request) {
+  on(PSTR("/update"), HTTP_POST, [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", (Update.hasError()) ? "FAIL" : "<META http-equiv=\"refresh\" content=\"15;URL=/update\">Update correct. Restarting...");
-    response->addHeader("Connection", "close");
-    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader(PSTR("Connection"), PSTR("close"));
+    response->addHeader(PSTR("Access-Control-Allow-Origin"), PSTR("*"));
     request->send(response);
     this->_fs->end();
     ESP.restart(); }, [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) { this->updateFirmware(request, filename, index, data, len, final); });
@@ -1846,19 +2077,19 @@ void AsyncFSWebServer::serverInit()
   //    this->handleStatus(request);
   //  });
 
-  on("/reset", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/reset"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->handleRst(request);
   });
 
-  on("/savenetwork", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/savenetwork"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->handleSaveNetwork(request);
   });
 
-  on("/config/network", [this](AsyncWebServerRequest *request) {
+  on(PSTR("/config/network"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_config_network(request);
@@ -1870,8 +2101,8 @@ void AsyncFSWebServer::serverInit()
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     AsyncWebServerResponse *response = request->beginResponse(403, "text/plain", "Forbidden");
-    response->addHeader("Connection", "close");
-    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader(PSTR("Connection"), PSTR("close"));
+    response->addHeader(PSTR("Access-Control-Allow-Origin"), PSTR("*"));
     request->send(response);
   });
 #endif // HIDE_SECRET
@@ -1998,7 +2229,7 @@ void AsyncFSWebServer::serverInit()
       DEBUGLOG("BodyEnd: %u\r\n", total);
   });
 
-  //begin(); //--> Not here
+  begin(); //--> Not here
   DEBUGLOG("HTTP server started\r\n");
 }
 
@@ -2118,8 +2349,8 @@ void AsyncFSWebServer::handleRst(AsyncWebServerRequest *request)
 // -------------------------------------------------------------------
 void AsyncFSWebServer::handleSaveNetwork(AsyncWebServerRequest *request)
 {
-  String qsid = request->arg("ssid");
-  String qpass = request->arg("password");
+  String qsid = request->arg(PSTR("ssid"));
+  String qpass = request->arg(PSTR("password"));
 
   //decodeURI(qsid);
   //decodeURI(qpass);
@@ -2128,11 +2359,11 @@ void AsyncFSWebServer::handleSaveNetwork(AsyncWebServerRequest *request)
   {
     config_save_wifi(qsid, qpass);
 
-    request->send(200, "text/plain", "saved");
+    request->send(200, PSTR("text/plain"), PSTR("saved"));
   }
   else
   {
-    request->send(400, "text/plain", "No SSID");
+    request->send(400, PSTR("text/plain"), PSTR("No SSID"));
   }
 
   // String s;

@@ -44,48 +44,7 @@
 #include "PingAlive.h"
 #include <pgmspace.h>
 
-#define PRINTPORT Serial1
-#define DEBUGPORT Serial1
 
-#define RELEASE
-#define RELEASEMQTT
-#define RELEASEMODBUS
-
-#define PRINT(fmt, ...)                      \
-  {                                          \
-    static const char pfmt[] PROGMEM = fmt;  \
-    PRINTPORT.printf_P(pfmt, ##__VA_ARGS__); \
-  }
-
-#ifndef RELEASE
-#define DEBUGLOG(fmt, ...)                   \
-  {                                          \
-    static const char pfmt[] PROGMEM = fmt;  \
-    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
-  }
-#else
-#define DEBUGLOG(...)
-#endif
-
-#ifndef RELEASEMQTT
-#define DEBUGMQTT(fmt, ...)                  \
-  {                                          \
-    static const char pfmt[] PROGMEM = fmt;  \
-    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
-  }
-#else
-#define DEBUGMQTT(...)
-#endif
-
-#ifndef RELEASEMODBUS
-#define DEBUGMODBUS(fmt, ...)                \
-  {                                          \
-    static const char pfmt[] PROGMEM = fmt;  \
-    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
-  }
-#else
-#define DEBUGMODBUS(...)
-#endif
 
 #define ESP_PIN_0 0   //D3
 #define ESP_PIN_1 1   //Tx

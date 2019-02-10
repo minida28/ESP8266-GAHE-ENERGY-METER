@@ -10,5 +10,6 @@
 "powerthreshold_param":"wattthreshold",
 "publish_1": ["kwh1/mqttstatus",2,true,"CONNECTED"],
 "publish_2": ["/rumah/sts/kwh1/wattthreshold",2,true,""],
-"subscribe_1":  ["/rumah/cmd/kwh1/wattthreshold",2]
+"subscribe_1":  ["/rumah/cmd/kwh1/wattthreshold",2],
+"subscribe_2":  ["/rumah/cmd/kwh1/currentthreshold",2]
 }

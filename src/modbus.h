@@ -32,6 +32,7 @@ extern Packet packets[];
 //extern SoftwareSerial swSer;
 
 extern char bufwattThreshold[10];
+extern char bufCurrentThreshold[10];
 extern char bufVoltage[10];
 extern char bufAmpere[10];
 extern char bufWatt[10];

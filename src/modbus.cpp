@@ -5,6 +5,20 @@
 #include "mqtt.h"
 #include "timehelper.h"
 
+#define RELEASE
+
+#define DEBUGPORT Serial1
+
+#ifndef RELEASE
+#define DEBUGLOG(fmt, ...)                   \
+  {                                          \
+    static const char pfmt[] PROGMEM = fmt;  \
+    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
+  }
+#else
+#define DEBUGLOG(...)
+#endif
+
 //////////////////// Port information ///////////////////
 #define baud 9600
 
@@ -26,6 +40,8 @@ uint8_t Rx = 1;
 uint8_t Tx = 3;
 SoftwareSerial swSer(Rx, Tx, false, 256);
 #endif
+
+
 
 // // This is the easiest way to create new packets
 // // Add as many as you want. TOTAL_NO_OF_PACKETS
@@ -95,13 +111,16 @@ char bufUnk2[10];
 // Set initial max Watt Threshold value.
 // For 10 Amps MCB, suggested value is 2400 watt (around 11A) as the initial value.
 uint16_t wattThreshold = 2400;
+float currentThreshold = 11.4;
 
 // Variable to store updated Watt Threshold value
 // and set initial value equal to initial value of max watt Threshold.
 uint16_t lastwattThreshold = wattThreshold;
+float currentThreshold_old = currentThreshold;
 
 // Buffer for Watt Threshold
 char bufwattThreshold[10];
+char bufCurrentThreshold[10];
 
 unsigned long lastMsg = 0;
 unsigned long lastEmonCMSMsg;
@@ -282,6 +301,18 @@ void modbus_loop()
 
     /* Convert all floats into string prior to publish to MQTT broker */
 
+    // char* tempVoltage = bufVoltage;
+    // char bufAmpere[10];
+    // char bufWatt[10];
+    // char bufVar[10];
+    // char bufFrequency[10];
+    // char bufPstkwh[10];
+    // char bufPstkvarh[10];
+    // char bufNgtkvarh[10];
+    // char bufPowerFactor[10];
+    // char bufApparentPower[10];
+    // char bufUnk2[10];
+
     dtostrf(Voltage, 0, 1, bufVoltage);             /* Voltage */
     dtostrf(Ampere, 0, 2, bufAmpere);               /* Ampere */
     dtostrf(Watt, 0, 1, bufWatt);                   /* Wattage */
@@ -305,6 +336,12 @@ void modbus_loop()
   {
     lastwattThreshold = wattThreshold;
     dtostrf(wattThreshold, 0, 0, bufwattThreshold);
+  }
+
+  if (currentThreshold != currentThreshold_old || strlen(bufCurrentThreshold) == 0)
+  {
+    currentThreshold_old = currentThreshold;
+    dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
   }
 
   // -------------------------------------------------------------------
@@ -385,11 +422,14 @@ void modbus_loop()
 
     size_t len = root.measureLength();
 
-    char buf[len+1];
-    root.printTo(buf, len+1);
-    buf[len+1] = 0;
+    char buf[len + 1];
+    root.printTo(buf, len + 1);
+    buf[len + 1] = 0;
 
-    mqttClient.publish("ESP13579541/meterreading/1s", 2, 0, buf);
+    // mqttClient.publish("ESP13579541/meterreading/1s", 2, 0, buf);
+
+    // const char *topicMeterReading = "ESP13579541/meterreading/1s";
+    mqttClient.publish(PSTR("ESP13579541/meterreading/1s"), 2, 0, buf);
   }
 
   //publish watt and and ampere readings in higher publish rate (publish every 1 second)
@@ -397,7 +437,7 @@ void modbus_loop()
   unsigned long timer1 = 10000;
   bool hiWattState = false;
 
-  if (atoi(bufWatt) >= wattThreshold)
+  if (atoi(bufWatt) >= wattThreshold || atof(bufAmpere) >= currentThreshold)
   {
     timer1 = 1000;
     hiWattState = true;
@@ -410,10 +450,10 @@ void modbus_loop()
 
     if (hiWattState == false)
     {
-      char wattTopic[] = "/rumah/sts/kwh1/watt";
-      char ampereTopic[] = "/rumah/sts/kwh1/ampere";
-      mqttClient.publish(wattTopic, 0, 0, bufWatt);
-      mqttClient.publish(ampereTopic, 0, 0, bufAmpere);
+      // char wattTopic[] = "/rumah/sts/kwh1/watt";
+      // char ampereTopic[] = "/rumah/sts/kwh1/ampere";
+      mqttClient.publish(PSTR("/rumah/sts/kwh1/watt"), 0, 0, bufWatt);
+      mqttClient.publish(PSTR("/rumah/sts/kwh1/ampere"), 0, 0, bufAmpere);
     }
   }
 
@@ -610,21 +650,21 @@ void modbus_loop()
       Serial1.println(regs[24], HEX);
     */
 
-    DEBUGMODBUS("%d Year, %d Month, %d Day, %d Hour, %d Minute, %d Second\n",
-                hibyteYear, lobyteMonth, hibyteDay, lobyteHour, hibyteMinute, lobyteSecond);
+    // DEBUGLOG("%d Year, %d Month, %d Day, %d Hour, %d Minute, %d Second\n",
+    //             hibyteYear, lobyteMonth, hibyteDay, lobyteHour, hibyteMinute, lobyteSecond);
 
-    //    DEBUGMODBUS("V: %.1f, ", Voltage);
-    //    DEBUGMODBUS("I: %.3f, ", Ampere);
-    //    DEBUGMODBUS("W: %.1f, ", Watt);
-    //    DEBUGMODBUS("VAr: %.1f, ", Var);
-    //    DEBUGMODBUS("Hz: %.2f, ", Frequency);
-    //    DEBUGMODBUS("PstkWh: %.3f, ", Pstkwh);
-    //    DEBUGMODBUS("PstkVarh: %.3f, ", Pstkvarh);
-    //    DEBUGMODBUS("NgtkVarh: %.3f, ", Ngtkvarh);
-    //    DEBUGMODBUS("PF: %.1f, ", PowerFactor);
-    //    DEBUGMODBUS("VA: %.1f, ", ApparentPower);
-    //    DEBUGMODBUS("Unk2: %.1f", Unk2);
-    //    DEBUGMODBUS("\r\n");
+    //    DEBUGLOG("V: %.1f, ", Voltage);
+    //    DEBUGLOG("I: %.3f, ", Ampere);
+    //    DEBUGLOG("W: %.1f, ", Watt);
+    //    DEBUGLOG("VAr: %.1f, ", Var);
+    //    DEBUGLOG("Hz: %.2f, ", Frequency);
+    //    DEBUGLOG("PstkWh: %.3f, ", Pstkwh);
+    //    DEBUGLOG("PstkVarh: %.3f, ", Pstkvarh);
+    //    DEBUGLOG("NgtkVarh: %.3f, ", Ngtkvarh);
+    //    DEBUGLOG("PF: %.1f, ", PowerFactor);
+    //    DEBUGLOG("VA: %.1f, ", ApparentPower);
+    //    DEBUGLOG("Unk2: %.1f", Unk2);
+    //    DEBUGLOG("\r\n");
 
     /*
       Serial1.print("requests: ");

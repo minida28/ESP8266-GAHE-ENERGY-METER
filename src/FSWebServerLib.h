@@ -24,7 +24,7 @@
 #include "Hash.h"
 
 
-#define RELEASE  // Comment to enable debug output
+// #define RELEASE  // Comment to enable debug output
 
 // #define DBG_OUTPUT_PORT Serial1
 // #define DEBUGPORT Serial1
@@ -90,8 +90,8 @@ class AsyncFSWebServer : public AsyncWebServer
 {
 public:
   AsyncFSWebServer(uint16_t port);
-  void begin(FS *fs);
-  void handle();
+  void start(FS *fs);
+  void loop();
   //AsyncWebSocket _ws = AsyncWebSocket("/ws");
 
 protected:
@@ -181,6 +181,8 @@ protected:
 
 extern AsyncFSWebServer ESPHTTPServer;
 void esp_restart();
+
+
 void runAsyncClientEmoncms();
 void runAsyncClientThingspeak();
 
