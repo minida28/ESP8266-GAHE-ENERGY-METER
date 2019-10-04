@@ -223,17 +223,17 @@ bool mqtt_load_config()
     return false;
   }
 
-  StaticJsonBuffer<1024> jsonBuffer;
-  JsonObject &json = jsonBuffer.parseObject(configFile);
+  StaticJsonDocument<1024> json;
+  auto error = deserializeJson(json, configFile);
 
-  if (!json.success())
+  if (error)
   {
     DEBUGLOG("Failed to parse MQTT config file\r\n");
     return false;
   }
 
   // #ifndef RELEASEMQTT
-  json.prettyPrintTo(DEBUGPORT);
+  serializeJsonPretty(json, DEBUGPORT);
   DEBUGLOG("\r\n");
   // #endif
 
@@ -275,13 +275,13 @@ bool mqtt_load_pubsubconfig()
     // return false;
   }
 
-  StaticJsonBuffer<allocatedJsonBufferSize> jsonBuffer;
-  JsonObject &root = jsonBuffer.parseObject(pubSubJsonFile);
+  StaticJsonDocument<allocatedJsonBufferSize> root;
+  auto error = deserializeJson(root, pubSubJsonFile);
 
   //close the file, save your memory, keep healthy :-)
   pubSubJsonFile.close();
 
-  if (!root.success())
+  if (error)
   {
     DEBUGLOG("Failed to parse PUBSUBJSON_FILE file\r\n");
     return false;
@@ -289,7 +289,7 @@ bool mqtt_load_pubsubconfig()
 
   strlcpy(configMqtt.pub_default_basetopic, root[FPSTR(pgm_pub_default_basetopic)], sizeof(configMqtt.pub_default_basetopic) / sizeof(configMqtt.pub_default_basetopic[0]));
 
-  JsonArray &pub_param = root[FPSTR(pgm_pub_param)];
+  JsonArray pub_param = root[FPSTR(pgm_pub_param)];
 
   uint16_t jsonArraySize = pub_param.size();
   uint16_t pub_param_numrows = sizeof(configMqtt.pub_param) / sizeof(configMqtt.pub_param[0]);
@@ -348,22 +348,22 @@ void MqttConnectedCb()
   configFile.readBytes(buf.get(), size);
   configFile.close();
   //DynamicJsonBuffer jsonBuffer(1024);
-  StaticJsonBuffer<1536> jsonBuffer;
+  StaticJsonDocument<1536> json;
 
-  JsonObject &json = jsonBuffer.parseObject(buf.get());
+  auto error = deserializeJson(json, buf.get());
 
   //  JsonVariant json;
   //  json = jsonBuffer.parse(buf.get());
 
-  if (!json.success())
+  if (error)
   {
     DEBUGLOG("Failed to parse MQTT config file\r\n");
     return;
   }
 
-#ifndef RELEASEMQTT
+#ifndef RELEASE
   String temp;
-  json.prettyPrintTo(temp);
+  serializeJsonPretty(json, temp);
   Serial.println(temp);
 #endif
 
@@ -377,6 +377,10 @@ void MqttConnectedCb()
   DEBUGLOG(
       "Publishing packet topic:  %s\r\n QoS:  %d\r\n retain:  %d\r\n payload:  %s\r\n",
       configMqtt.publish_1_topic, configMqtt.publish_1_qos, configMqtt.publish_1_retain, configMqtt.publish_1_payload);
+
+  // publish 2
+  dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
+  mqttClient.publish(PSTR("/rumah/sts/kwh1/currentthreshold"), 2, true, bufCurrentThreshold);
 
   // subscribe 1
   mqttClient.subscribe(

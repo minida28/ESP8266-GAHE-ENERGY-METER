@@ -15,7 +15,7 @@
 
 #define RELEASE
 
-#define DEBUGPORT Serial1
+#define DEBUGPORT Serial
 
 #ifndef RELEASE
 #define DEBUGLOG(fmt, ...)                   \
@@ -155,8 +155,7 @@ bool save_system_info()
   char compileTime[lenCompileTime + 1];
   strcpy_P(compileTime, PSTR(__TIME__));
 
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = jsonBuffer.createObject();
+  DynamicJsonDocument root(1024);
 
   root[FPSTR(pgm_filename)] = fileName;
   root[FPSTR(pgm_compiledate)] = compileDate;
@@ -178,7 +177,7 @@ bool save_system_info()
   root[FPSTR(pgm_bootversion)] = ESP.getBootVersion();
   root[FPSTR(pgm_resetreason)] = ESP.getResetReason();
 
-  root.prettyPrintTo(file);
+  serializeJsonPretty(root, file);
   file.flush();
   file.close();
   return true;
@@ -219,6 +218,7 @@ void setup()
   Serial.println(F("Mounting FS..."));
 
   if (!SPIFFS.begin())
+  // if (false)
   {
     Serial.println("Failed to mount file system");
     return;

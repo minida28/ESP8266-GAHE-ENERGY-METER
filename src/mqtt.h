@@ -50,7 +50,7 @@ extern const char pgm_txt_subcribedTopic_1[];
 
 // MQTT config
 typedef struct {
-  char server[64] = "192.168.10.3";
+  char server[64] = "10.0.2.2";
   uint16_t port = 1883;
   char user[32] = "test";
   char pass[64] = "test";

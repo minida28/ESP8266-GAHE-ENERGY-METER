@@ -389,8 +389,8 @@ void modbus_loop()
     }
     if (updateToCloud && WiFi.status() == WL_CONNECTED)
     {
-      runAsyncClientEmoncms();
-      runAsyncClientThingspeak();
+      // runAsyncClientEmoncms();
+      // runAsyncClientThingspeak();
     }
   }
 
@@ -405,8 +405,10 @@ void modbus_loop()
 
   if (mqttClient.connected())
   {
-    StaticJsonBuffer<1024> jsonBuffer;
-    JsonObject &root = jsonBuffer.createObject();
+    // uint32_t freeheap = ESP.getFreeHeap();
+    
+    StaticJsonDocument<1024> root;
+    // DynamicJsonDocument root(1024);
 
     root[FPSTR(pgm_voltage)] = bufVoltage;
     root[FPSTR(pgm_ampere)] = bufAmpere;
@@ -419,210 +421,18 @@ void modbus_loop()
     root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
     root[FPSTR(pgm_apparentpower)] = bufApparentPower;
     root[FPSTR(pgm_unk2)] = bufUnk2;
+    root["heap"] = ESP.getFreeHeap();
 
-    size_t len = root.measureLength();
+    size_t len = measureJson(root);
 
     char buf[len + 1];
-    root.printTo(buf, len + 1);
+    serializeJson(root, buf, sizeof(buf));
     buf[len + 1] = 0;
 
-    // mqttClient.publish("ESP13579541/meterreading/1s", 2, 0, buf);
+    mqttClient.publish("ESP13579541/meterreading/1s", 2, 0, buf);
 
     // const char *topicMeterReading = "ESP13579541/meterreading/1s";
-    mqttClient.publish(PSTR("ESP13579541/meterreading/1s"), 2, 0, buf);
-  }
-
-  //publish watt and and ampere readings in higher publish rate (publish every 1 second)
-  //if watt is above wattThreshold
-  unsigned long timer1 = 10000;
-  bool hiWattState = false;
-
-  if (atoi(bufWatt) >= wattThreshold || atof(bufAmpere) >= currentThreshold)
-  {
-    timer1 = 1000;
-    hiWattState = true;
-  }
-
-  static bool hiWattState_old = false;
-  if (hiWattState != hiWattState_old)
-  {
-    hiWattState_old = hiWattState;
-
-    if (hiWattState == false)
-    {
-      // char wattTopic[] = "/rumah/sts/kwh1/watt";
-      // char ampereTopic[] = "/rumah/sts/kwh1/ampere";
-      mqttClient.publish(PSTR("/rumah/sts/kwh1/watt"), 0, 0, bufWatt);
-      mqttClient.publish(PSTR("/rumah/sts/kwh1/ampere"), 0, 0, bufAmpere);
-    }
-  }
-
-  static unsigned long lastTimer;
-  if (millis() - lastTimer >= timer1)
-  {
-    lastTimer = millis(); //  Update time
-
-    const char *bt = configMqtt.pub_default_basetopic;
-
-    uint16_t pub_param_numrows = sizeof(configMqtt.pub_param) / sizeof(configMqtt.pub_param[0]);
-    // uint16_t pub_param_numcols = sizeof(configMqtt.pub_param[0]) / sizeof(char);
-
-    // if (ws.hasClient(num))
-    // {
-    //   char buf[4];
-    //   ws.text(num, itoa(pub_param_numrows, buf, 10));
-    // }
-
-    for (int i = 0; i < pub_param_numrows; i++)
-    {
-      const char *prm = configMqtt.pub_param[i];
-
-      //create buffer to hold the result of concat
-      char cat[strlen(bt) + strlen(prm) + 1];
-
-      // copy & concatenate
-      strcpy(cat, bt);
-      strcat(cat, prm);
-
-      // if (ws.hasClient(num))
-      // {
-      //   ws.text(num, cat);
-      // }
-
-      if (i == 0)
-      {
-        if (!isnan(atof(bufVoltage)) || atoi(bufVoltage) == 0)
-        {
-          mqttClient.publish(cat, 0, 0, bufVoltage);
-        }
-      }
-      if (i == 1)
-      {
-        mqttClient.publish(cat, 0, 0, bufAmpere);
-      }
-      if (i == 2)
-      {
-        mqttClient.publish(cat, 0, 0, bufWatt);
-      }
-      if (i == 3)
-      {
-        mqttClient.publish(cat, 0, 0, bufVar);
-      }
-      if (i == 4)
-      {
-        mqttClient.publish(cat, 0, 0, bufFrequency);
-      }
-      if (i == 5)
-      {
-        if (atof(bufPstkwh) >= 0.01 || !isnan(atof(bufPstkwh)))
-        {
-          mqttClient.publish(cat, 0, 0, bufPstkwh);
-        }
-      }
-      if (i == 6)
-      {
-        mqttClient.publish(cat, 0, 0, bufPstkvarh);
-      }
-      if (i == 7)
-      {
-        mqttClient.publish(cat, 0, 0, bufNgtkvarh);
-      }
-      if (i == 8)
-      {
-        mqttClient.publish(cat, 0, 0, bufPowerFactor);
-      }
-      if (i == 9)
-      {
-        mqttClient.publish(cat, 0, 0, bufApparentPower);
-      }
-      if (i == 10)
-      {
-        mqttClient.publish(cat, 0, 0, bufUnk2);
-      }
-    }
-  }
-
-  // -------------------------------------------------------------------
-  // 10 SECOND
-  // -------------------------------------------------------------------
-  static unsigned long lastTimer10s;
-  if (millis() - lastTimer10s >= 10000)
-  {
-
-    lastTimer10s = millis(); //  Update time
-
-    //pointer to base topic
-    const char *bt = configMqtt.pub_10s_basetopic;
-
-    uint16_t pub_param_numrows = sizeof(configMqtt.pub_param) / sizeof(configMqtt.pub_param[0]);
-
-    for (int i = 0; i < pub_param_numrows; i++)
-    {
-      const char *prm = configMqtt.pub_param[i];
-
-      //create buffer to hold the result of concat
-      char cat[strlen(bt) + strlen(prm) + 1];
-
-      // copy & concatenate
-      strcpy(cat, bt);
-      strcat(cat, prm);
-
-      // if (ws.hasClient(num))
-      // {
-      //   ws.text(num, cat);
-      // }
-
-      if (i == 0)
-      {
-        if (!isnan(atof(bufVoltage)) || atoi(bufVoltage) == 0)
-        {
-          mqttClient.publish(cat, 0, 0, bufVoltage);
-        }
-      }
-      if (i == 1)
-      {
-        mqttClient.publish(cat, 0, 0, bufAmpere);
-      }
-      if (i == 2)
-      {
-        mqttClient.publish(cat, 0, 0, bufWatt);
-      }
-      if (i == 3)
-      {
-        mqttClient.publish(cat, 0, 0, bufVar);
-      }
-      if (i == 4)
-      {
-        mqttClient.publish(cat, 0, 0, bufFrequency);
-      }
-      if (i == 5)
-      {
-        if (atof(bufPstkwh) >= 0.01 || !isnan(atof(bufPstkwh)))
-        {
-          mqttClient.publish(cat, 0, 0, bufPstkwh);
-        }
-      }
-      if (i == 6)
-      {
-        mqttClient.publish(cat, 0, 0, bufPstkvarh);
-      }
-      if (i == 7)
-      {
-        mqttClient.publish(cat, 0, 0, bufNgtkvarh);
-      }
-      if (i == 8)
-      {
-        mqttClient.publish(cat, 0, 0, bufPowerFactor);
-      }
-      if (i == 9)
-      {
-        mqttClient.publish(cat, 0, 0, bufApparentPower);
-      }
-      if (i == 10)
-      {
-        mqttClient.publish(cat, 0, 0, bufUnk2);
-      }
-    }
+    // mqttClient.publish(PSTR("ESP13579541/meterreading/1s"), 2, 0, buf);
   }
 
   ////----------TIME

@@ -163,10 +163,10 @@ void runAsyncClientEmoncms()
     buf[size] = '\0';
     file.close();
 
-    // DynamicJsonBuffer jsonBuffer;
-    StaticJsonBuffer<1152> jsonBuffer;
-    JsonObject &json = jsonBuffer.parseObject(buf);
-    if (!json.success())
+    // DynamicJsonDocument jsonBuffer(1024);
+    StaticJsonDocument<1152> json;
+    auto error = deserializeJson(json, buf);
+    if (error)
     {
       DEBUGLOG("Failed to parse config file\r\n");
       return;
@@ -179,16 +179,15 @@ void runAsyncClientEmoncms()
     //const char* fulljson = json[FPSTR(pgm_fulljson)];
     const char *host = json[FPSTR(pgm_host)];
 
-    StaticJsonBuffer<512> fulljsonBuffer;
-    JsonObject &key = fulljsonBuffer.createObject();
-    key[FPSTR(pgm_voltage)] = bufVoltage;
-    key[FPSTR(pgm_ampere)] = bufAmpere;
-    key[FPSTR(pgm_watt)] = bufWatt;
-    key[FPSTR(pgm_pstkwh)] = bufPstkwh;
+    StaticJsonDocument<512> jsonBuffer;
+    jsonBuffer[FPSTR(pgm_voltage)] = bufVoltage;
+    jsonBuffer[FPSTR(pgm_ampere)] = bufAmpere;
+    jsonBuffer[FPSTR(pgm_watt)] = bufWatt;
+    jsonBuffer[FPSTR(pgm_pstkwh)] = bufPstkwh;
 
-    size_t len = key.measureLength();
+    size_t len = measureJson(jsonBuffer);
     char bufFulljson[len + 1];
-    key.printTo(bufFulljson, sizeof(bufFulljson));
+    serializeJson(jsonBuffer, bufFulljson, sizeof(bufFulljson));
 
     StreamString output;
     if (output.reserve(512))
@@ -357,9 +356,9 @@ void runAsyncClientThingspeak()
     buf[size] = '\0';
     file.close();
 
-    StaticJsonBuffer<512> jsonBuffer;
-    JsonObject &json = jsonBuffer.parseObject(buf);
-    if (!json.success())
+    StaticJsonDocument<512> json;
+    auto error = deserializeJson(json, buf);
+    if (error)
     {
       DEBUGLOG("Failed to parse config file\r\n");
       return;
@@ -713,12 +712,12 @@ void AsyncFSWebServer::start(FS *fs)
   NBNS.begin(_config.hostname);
 
   // SSDP.schema(HTTP.client());
-  SSDP.setSchemaURL(PSTR("ssdpxml"));
-  SSDP.setHTTPPort(80);
-  SSDP.setDeviceType(PSTR("upnp:rootdevice"));
+  // SSDP.setSchemaURL(PSTR("ssdpxml"));
+  // SSDP.setHTTPPort(80);
+  // SSDP.setDeviceType(PSTR("upnp:rootdevice"));
   //  SSDP.setModelName(_config.hostname.c_str());
   //  SSDP.setModelNumber(FPSTR(modelNumber));
-  SSDP.begin();
+  // SSDP.begin();
 
   ESPHTTPServer.serverInit(); // Configure and start Web server
 
@@ -770,15 +769,16 @@ bool AsyncFSWebServer::loadHTTPAuth()
     return false;
   }
 
-  StaticJsonBuffer<256> jsonBuffer;
-  JsonObject &json = jsonBuffer.parseObject(configFile);
+  StaticJsonDocument<256> json;
+  auto error = deserializeJson(json, configFile);
   configFile.close();
 
-  if (!json.success())
+  if (error)
   {
 #ifndef RELEASE
     String temp;
-    json.prettyPrintTo(temp);
+    // json.prettyPrintTo(temp);
+    serializeJsonPretty(json, temp);
     PRINT("%s\r\n", temp.c_str());
     PRINT("Failed to parse secret file\r\n");
 #endif // RELEASE
@@ -788,7 +788,8 @@ bool AsyncFSWebServer::loadHTTPAuth()
     return false;
   }
 #ifndef RELEASE
-  json.prettyPrintTo(DEBUGPORT);
+  // json.prettyPrintTo(DEBUGPORT);
+  serializeJsonPretty(json, DEBUGPORT);
   PRINT("\r\n");
 #endif // RELEASE
 
@@ -1058,17 +1059,18 @@ bool AsyncFSWebServer::load_config_network()
   //close the file, save your memory, keep healthy :-)
   file.close();
 
-  StaticJsonBuffer<512> jsonBuffer;
-  JsonObject &root = jsonBuffer.parseObject(buf);
+  StaticJsonDocument<512> root;
+  auto error = deserializeJson(root, buf);
 
-  if (!root.success())
+  if (error)
   {
     DEBUGLOG("Failed to parse config NETWORK file\r\n");
     return false;
   }
 
 #ifndef RELEASE
-  root.prettyPrintTo(Serial);
+  // root.prettyPrintTo(Serial);
+  serializeJsonPretty(root, Serial);
 #endif
 
   // strlcpy(_config.hostname, root[FPSTR(pgm_hostname)], sizeof(_config.hostname)/sizeof(_config.hostname[0]));
@@ -1114,17 +1116,18 @@ bool AsyncFSWebServer::load_config_time()
   //close the file, save your memory, keep healthy :-)
   file.close();
 
-  StaticJsonBuffer<1024> jsonBuffer;
-  JsonObject &root = jsonBuffer.parseObject(buf);
+  StaticJsonDocument<1024> root;
+  auto error = deserializeJson(root, buf);
 
-  if (!root.success())
+  if (error)
   {
     DEBUGLOG("Failed to parse config NETWORK file\r\n");
     return false;
   }
 
 #ifndef RELEASE
-  root.prettyPrintTo(DEBUGPORT);
+  // root.prettyPrintTo(DEBUGPORT);
+  serializeJsonPretty(root, DEBUGPORT);
 #endif
 
   // _configTime.timezone = root[FPSTR(pgm_timezone)];
@@ -1146,8 +1149,7 @@ bool AsyncFSWebServer::save_config_network()
 {
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &json = jsonBuffer.createObject();
+  DynamicJsonDocument json(1024);
 
   // json[FPSTR(pgm_hostname)] = _config.hostname;
   json[FPSTR(pgm_ssid)] = _config.ssid;
@@ -1168,10 +1170,10 @@ bool AsyncFSWebServer::save_config_network()
   // }
 
 #ifndef RELEASE
-  json.prettyPrintTo(DEBUGPORT);
+  serializeJsonPretty(json, DEBUGPORT);
 #endif
 
-  json.prettyPrintTo(file);
+  serializeJsonPretty(json, file);
   file.flush();
   file.close();
   return true;
@@ -1184,8 +1186,7 @@ bool AsyncFSWebServer::save_config_time()
 {
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &json = jsonBuffer.createObject();
+  DynamicJsonDocument json(1024);
 
   json[FPSTR(pgm_timezone)] = TimezoneFloat();
   json[FPSTR(pgm_dst)] = _configTime.dst;
@@ -1205,10 +1206,10 @@ bool AsyncFSWebServer::save_config_time()
   }
 
 #ifndef RELEASE
-  json.prettyPrintTo(DEBUGPORT);
+  serializeJsonPretty(json, DEBUGPORT);
 #endif
 
-  json.prettyPrintTo(file);
+  serializeJsonPretty(json, file);
   file.flush();
   file.close();
   return true;
@@ -1219,8 +1220,7 @@ void AsyncFSWebServer::send_config_network(AsyncWebServerRequest *request)
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   AsyncResponseStream *response = request->beginResponseStream("application/json");
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = jsonBuffer.createObject();
+  DynamicJsonDocument root(1024);
 
   root[FPSTR(pgm_hostname)] = _config.hostname;
   root[FPSTR(pgm_ssid)] = _config.ssid;
@@ -1232,7 +1232,7 @@ void AsyncFSWebServer::send_config_network(AsyncWebServerRequest *request)
   root[FPSTR(pgm_dns0)] = _config.dns0;
   root[FPSTR(pgm_dns1)] = _config.dns1;
 
-  root.prettyPrintTo(*response);
+  serializeJsonPretty(root, *response);
   request->send(response);
 }
 
@@ -1272,8 +1272,7 @@ void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *reque
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   AsyncResponseStream *response = request->beginResponseStream("application/json");
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = jsonBuffer.createObject();
+  DynamicJsonDocument root(1024);
 
   root[FPSTR(pgm_chipid)] = ESP.getChipId();
   root[FPSTR(pgm_hostname)] = _config.hostname;
@@ -1313,7 +1312,9 @@ void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *reque
   root[FPSTR(pgm_lastboot)] = getLastBootStr();
   root["ping_seq_num_send"] = ping_seq_num_send;
   root["ping_seq_num_recv"] = ping_seq_num_recv;
-  root.printTo(*response);
+
+  serializeJson(root, *response);
+
   request->send(response);
 }
 
@@ -1331,8 +1332,7 @@ void AsyncFSWebServer::send_NTP_configuration_values_html(AsyncWebServerRequest 
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
   AsyncResponseStream *response = request->beginResponseStream("text/json");
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = jsonBuffer.createObject();
+  DynamicJsonDocument root(1024);
 
   root[FPSTR(pgm_timezone)] = TimezoneFloat();
   root[FPSTR(pgm_dst)] = _configTime.dst;
@@ -1343,7 +1343,7 @@ void AsyncFSWebServer::send_NTP_configuration_values_html(AsyncWebServerRequest 
   root[FPSTR(pgm_ntpserver_1)] = _configTime.ntpserver_1;
   root[FPSTR(pgm_ntpserver_2)] = _configTime.ntpserver_2;
 
-  root.printTo(*response);
+  serializeJson(root, *response);
   request->send(response);
 }
 
@@ -1703,10 +1703,9 @@ bool AsyncFSWebServer::saveHTTPAuth()
 {
   //flag_config = false;
   DEBUGLOG("Save secret\r\n");
-  //DynamicJsonBuffer jsonBuffer(256);
-  DynamicJsonBuffer jsonBuffer;
-  //StaticJsonBuffer<256> jsonBuffer;
-  JsonObject &json = jsonBuffer.createObject();
+  //DynamicJsonDocument jsonBuffer(1024)(256);
+  DynamicJsonDocument json(1024);
+  //StaticJsonDocument<256> jsonBuffer;
   json["auth"] = _httpAuth.auth;
   json["user"] = _httpAuth.wwwUsername;
   json["pass"] = _httpAuth.wwwPassword;
@@ -1722,11 +1721,11 @@ bool AsyncFSWebServer::saveHTTPAuth()
 
 #ifndef RELEASE
   String temp;
-  json.prettyPrintTo(temp);
+  serializeJsonPretty(json, temp);
   Serial.println(temp);
 #endif // RELEASE
 
-  json.printTo(configFile);
+  serializeJson(json, configFile);
   configFile.flush();
   configFile.close();
   return true;
