@@ -1310,8 +1310,6 @@ void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *reque
   root[FPSTR(pgm_date)] = getDateStr();
   root[FPSTR(pgm_uptime)] = getUptimeStr();
   root[FPSTR(pgm_lastboot)] = getLastBootStr();
-  root["ping_seq_num_send"] = ping_seq_num_send;
-  root["ping_seq_num_recv"] = ping_seq_num_recv;
 
   serializeJson(root, *response);
 

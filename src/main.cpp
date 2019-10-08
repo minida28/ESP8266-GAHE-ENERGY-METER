@@ -248,7 +248,7 @@ void setup()
   modbus_setup();
 
   //--- DHT Adafruit
-  dht_setup();
+  // dht_setup();
 
   save_system_info();
 
@@ -267,13 +267,6 @@ void pingFault(void) {}
 void loop()
 {
   timeLoop();
-
-  static bool enablePing = true;
-  if (WiFi.status() == WL_CONNECTED && enablePing)
-  {
-    startPingAlive();
-    enablePing = false;
-  }
 
   utcTime = now;
 

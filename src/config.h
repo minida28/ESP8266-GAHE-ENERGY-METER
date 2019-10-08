@@ -41,7 +41,6 @@
 
 #include "timehelper.h"
 #include "sntphelper.h"
-#include "PingAlive.h"
 #include <pgmspace.h>
 
 
