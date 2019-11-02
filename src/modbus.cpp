@@ -22,8 +22,8 @@
 //////////////////// Port information ///////////////////
 #define baud 9600
 
-#define timeout 200
-#define polling 55 // the scan rate; default value is 40
+#define timeout 100
+#define polling 3 // the scan rate; default value is 40
 #define retry_count 0
 
 // used to toggle the receive/transmit pin on the driver
@@ -34,14 +34,14 @@
 // The total amount of available memory on the master to store data
 #define TOTAL_NO_OF_REGISTERS 220
 
+// #define SOFTWARESERIAL
+
 #if defined(SOFTWARESERIAL)
 #include "SoftwareSerial.h"
 uint8_t Rx = 1;
 uint8_t Tx = 3;
 SoftwareSerial swSer(Rx, Tx, false, 256);
 #endif
-
-
 
 // // This is the easiest way to create new packets
 // // Add as many as you want. TOTAL_NO_OF_PACKETS
@@ -172,6 +172,241 @@ void modbus_setup()
   oldrequestPACKET2 = packets[PACKET2].successful_requests;
   oldrequestPACKET3 = packets[PACKET3].successful_requests;
   oldrequestPACKET6 = packets[PACKET6].successful_requests;
+}
+
+void modbus_loop_1()
+{
+
+  static bool ledOn = 0;
+  
+  if (packets[PACKET1].connection == 1 && packets[PACKET2].connection == 1 && packets[PACKET3].connection == 1 && packets[PACKET6].connection == 1)
+  {
+    lastmillisoldPacketConnection = millis();
+    // oldWatt = Watt;
+  }
+  else if (millis() - lastmillisoldPacketConnection > 120000UL)
+  {
+    digitalWrite(2, HIGH);
+    return;
+  }
+
+
+  static uint32_t numSuccessReq_old = 0;
+  uint32_t numSuccessReq = packets[PACKET1].successful_requests;
+
+  static uint32_t numFailedReq_old = 0;
+  uint32_t numFailedReq = packets[PACKET1].failed_requests;
+
+
+  if (numSuccessReq != numSuccessReq_old || numFailedReq != numFailedReq_old)
+  {
+    if (numSuccessReq != numSuccessReq_old)
+    {
+      // update old values
+      numSuccessReq_old = numSuccessReq;
+    }
+
+    if (numFailedReq != numFailedReq_old)
+    {
+      // update old values
+      numFailedReq_old = numFailedReq;
+
+      digitalWrite(2, HIGH);
+    }
+  }
+  else
+  {
+    return;
+  }
+
+  bool success = 0;
+
+  if (packets[PACKET2].successful_requests != oldrequestPACKET2 &&
+      packets[PACKET3].successful_requests != oldrequestPACKET3 &&
+      packets[PACKET6].successful_requests != oldrequestPACKET6)
+  {
+    //update old values
+    oldrequestPACKET2 = packets[PACKET2].successful_requests;
+    oldrequestPACKET3 = packets[PACKET3].successful_requests;
+    oldrequestPACKET6 = packets[PACKET6].successful_requests;
+
+    success = true;
+  }
+
+  if (!success)
+  {
+    char output[128];
+
+    sprintf_P(output, PSTR("%s,%d,%d,%d,%d"),
+              "failed request",
+              packets[PACKET1].requests,
+              numSuccessReq,
+              packets[PACKET1].failed_requests,
+              millis() / 1000);
+
+    if (ws.hasClient(num))
+    {
+      ws.textAll(output);
+    }
+
+    digitalWrite(2, HIGH);
+
+    return;
+  }
+
+
+  // Check if Watt Threshold has been changed or buffer is empty.
+  // If yes, update the last watt Threshold and its buffer value
+  if (wattThreshold != lastwattThreshold || strlen(bufwattThreshold) == 0)
+  {
+    lastwattThreshold = wattThreshold;
+    dtostrf(wattThreshold, 0, 0, bufwattThreshold);
+  }
+
+  if (currentThreshold != currentThreshold_old || strlen(bufCurrentThreshold) == 0)
+  {
+    currentThreshold_old = currentThreshold;
+    dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
+  }
+
+
+
+  ledOn = !ledOn;
+  digitalWrite(2, ledOn);
+
+  float Voltage;
+  float Ampere;
+  float Watt;
+  float Var;
+  float Frequency;
+  float Pstkwh;
+  float Pstkvarh;
+  float Ngtkvarh;
+  float PowerFactor;
+  float ApparentPower;
+  float Unk2;
+
+  unsigned long temp;
+  unsigned long *p = &temp;
+
+  //float Voltage;
+  temp = (unsigned long)regs[0] << 16 | regs[1];
+  Voltage = *(float *)p;
+  Voltage = Voltage - 1.9;
+
+  //float Ampere;
+  temp = (unsigned long)regs[2] << 16 | regs[3];
+  Ampere = *(float *)p;
+
+  //float Watt;
+  temp = (unsigned long)regs[4] << 16 | regs[5];
+  Watt = *(float *)p;
+
+  //float Var;
+  temp = (unsigned long)regs[6] << 16 | regs[7];
+  Var = *(float *)p;
+
+  //float Frequency;
+  temp = (unsigned long)regs[8] << 16 | regs[9];
+  Frequency = *(float *)p;
+
+  //float Pstkwh;
+  temp = (unsigned long)regs[10] << 16 | regs[11];
+  Pstkwh = *(float *)p;
+
+  //float Pstkvarh;
+  temp = (unsigned long)regs[12] << 16 | regs[13];
+  Pstkvarh = *(float *)p;
+
+  //float Ngtkvarh;
+  temp = (unsigned long)regs[14] << 16 | regs[15];
+  Ngtkvarh = *(float *)p;
+
+  //float PowerFactor;
+  temp = (unsigned long)regs[16] << 16 | regs[17];
+  PowerFactor = *(float *)p;
+
+  //float ApparentPower;
+  temp = (unsigned long)regs[18] << 16 | regs[19];
+  ApparentPower = *(float *)p;
+
+  //float Unk2;
+  temp = (unsigned long)regs[20] << 16 | regs[21];
+  Unk2 = *(float *)p;
+
+  if (false)
+  {
+    char output[256];
+
+    sprintf_P(output, PSTR("%.1f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%d,%d,%d,%d"),
+              Voltage,
+              Ampere,
+              Watt,
+              Var,
+              Frequency,
+              Pstkwh,
+              Pstkvarh,
+              Ngtkvarh,
+              PowerFactor,
+              ApparentPower,
+              Unk2,
+              packets[PACKET1].requests,
+              numSuccessReq,
+              packets[PACKET1].failed_requests,
+              millis() / 1000);
+
+    if (ws.hasClient(num))
+    {
+      ws.textAll(output);
+    }
+  }
+
+  if (true)
+  {
+
+    dtostrf(Voltage, 0, 1, bufVoltage);             /* Voltage */
+    dtostrf(Ampere, 0, 2, bufAmpere);               /* Ampere */
+    dtostrf(Watt, 0, 1, bufWatt);                   /* Wattage */
+    dtostrf(Var, 0, 1, bufVar);                     /* Positive Var */
+    dtostrf(Frequency, 0, 1, bufFrequency);         /* Frequency Hz */
+    dtostrf(Pstkwh, 0, 1, bufPstkwh);               /* Positive kWh */
+    dtostrf(Pstkvarh, 0, 1, bufPstkvarh);           /* Positive kVarh */
+    dtostrf(Ngtkvarh, 0, 1, bufNgtkvarh);           /* Negative kVarh */
+    dtostrf(PowerFactor, 0, 1, bufPowerFactor);     /* Power Factor */
+    dtostrf(ApparentPower, 0, 1, bufApparentPower); /* Apparent Power */
+    dtostrf(Unk2, 0, 1, bufUnk2);                   /* Unk2 */
+
+    StaticJsonDocument<512> root;
+    // DynamicJsonDocument root(512);
+
+    root[FPSTR(pgm_voltage)] = bufVoltage;
+    root[FPSTR(pgm_ampere)] = bufAmpere;
+    root[FPSTR(pgm_watt)] = bufWatt;
+    root[FPSTR(pgm_var)] = bufVar;
+    root[FPSTR(pgm_frequency)] = bufFrequency;
+    root[FPSTR(pgm_pstkwh)] = bufPstkwh;
+    root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
+    root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
+    root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
+    root[FPSTR(pgm_apparentpower)] = bufApparentPower;
+    root[FPSTR(pgm_unk2)] = bufUnk2;
+    root["heap"] = ESP.getFreeHeap();
+
+    size_t len = measureJson(root);
+
+    char buf[len + 1];
+    serializeJson(root, buf, sizeof(buf));
+
+    if (ws.hasClient(num))
+    {
+      ws.textAll(buf);
+    }
+
+    if (mqttClient.connected())
+    {
+      mqttClient.publish("ESP13579541/meterreading/1s", 2, 0, buf);
+    }
+  }
 }
 
 void modbus_loop()
@@ -406,7 +641,7 @@ void modbus_loop()
   if (mqttClient.connected())
   {
     // uint32_t freeheap = ESP.getFreeHeap();
-    
+
     StaticJsonDocument<1024> root;
     // DynamicJsonDocument root(1024);
 

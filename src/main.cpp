@@ -318,10 +318,15 @@ void loop()
 
   ESPHTTPServer.loop();
   // ftpSrv.handleFTP();
+
+  // modbus_loop();
   modbus_update();
-  modbus_loop();
-  dht_loop();
+  modbus_loop_1();
+  // modbus_update();
+
+  // dht_loop();
   mqtt_loop();
+
   //wifi_loop();
   //ESP.wdtFeed();
 
