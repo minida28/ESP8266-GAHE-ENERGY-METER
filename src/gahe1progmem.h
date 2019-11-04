@@ -133,6 +133,8 @@ const char pgm_apikey[] PROGMEM = "apikey";
 const char pgm_host[] PROGMEM = "host";
 const char pgm_online[] PROGMEM = "ONLINE";
 
+const char pgm_descriptionxmlfile[] PROGMEM = "/description.xml";
+
 //system info
 const char pgm_filename[] PROGMEM = "filename";
 const char pgm_compiledate[] PROGMEM = "compiledate";

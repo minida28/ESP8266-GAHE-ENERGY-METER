@@ -104,7 +104,9 @@ protected:
   String _browserMD5 = "";
   uint32_t _updateSize = 0;
 
-  WiFiEventHandler onStationModeConnectedHandler, onStationModeDisconnectedHandler;
+  WiFiEventHandler onStationModeConnectedHandler;
+  WiFiEventHandler onStationModeDisconnectedHandler;
+  WiFiEventHandler onStationModeGotIPHandler;
 
   //uint currentWifiStatus;
 
@@ -131,6 +133,7 @@ protected:
 
   void onWiFiConnected(WiFiEventStationModeConnected data);
   void onWiFiDisconnected(WiFiEventStationModeDisconnected data);
+  void onWifiGotIP(WiFiEventStationModeGotIP data);
 
   // static void s_secondTick(void *arg);
 

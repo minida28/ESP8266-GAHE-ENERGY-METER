@@ -662,6 +662,9 @@ void AsyncFSWebServer::start(FS *fs)
   onStationModeDisconnectedHandler = WiFi.onStationModeDisconnected([this](WiFiEventStationModeDisconnected data) {
     this->onWiFiDisconnected(data);
   });
+  onStationModeGotIPHandler = WiFi.onStationModeGotIP([this](WiFiEventStationModeGotIP data) {
+    this->onWifiGotIP(data);
+  });
 
   //WiFi.mode(WIFI_OFF);
   if (_apConfig.APenable)
@@ -707,17 +710,132 @@ void AsyncFSWebServer::start(FS *fs)
 
   dnsServer.start(53, "*", WiFi.softAPIP());
 
-  // MDNS.addService("http", "tcp", 80);
+  DEBUGLOG("Starting mDNS responder...\r\n");
+  // if (!MDNS.begin(_config.hostname))
+  if (!MDNS.begin("esp8266"))
+  { // Start the mDNS responder for esp8266.local
+    DEBUGLOG("Error setting up mDNS responder!\r\n");
+  }
+  else
+  {
+    DEBUGLOG("mDNS responder started\r\n");
+    // MDNS.addService("http", "tcp", 80);
+  }
+
+  ArduinoOTA.setHostname(_config.hostname);
+  ArduinoOTA.begin();
 
   NBNS.begin(_config.hostname);
 
-  // SSDP.schema(HTTP.client());
-  // SSDP.setSchemaURL(PSTR("ssdpxml"));
-  // SSDP.setHTTPPort(80);
-  // SSDP.setDeviceType(PSTR("upnp:rootdevice"));
-  //  SSDP.setModelName(_config.hostname.c_str());
-  //  SSDP.setModelNumber(FPSTR(modelNumber));
-  // SSDP.begin();
+  if (1)
+  {
+    DEBUGLOG("Starting SSDP...\r\n");
+    SSDP.setSchemaURL("description.xml");
+    SSDP.setHTTPPort(80);
+    SSDP.setDeviceType("upnp:rootdevice");
+    // SSDP.setModelName(ssdp_modelName);
+    // SSDP.setModelNumber(ssdp_modelNumber);
+
+    // SSDP.setSchemaURL(FPSTR(pgm_descriptionxml));
+    // SSDP.setHTTPPort(80);
+    // SSDP.setDeviceType(FPSTR(pgm_upnprootdevice));
+    //  SSDP.setModelName(_config.deviceName.c_str());
+    //  SSDP.setModelNumber(FPSTR(modelNumber));
+    SSDP.begin();
+
+    AsyncFSWebServer::on("/description.xml", HTTP_GET, [](AsyncWebServerRequest *request) {
+      DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+
+      File file = SPIFFS.open(FPSTR(pgm_descriptionxmlfile), "r");
+      if (!file)
+      {
+        PRINT("Failed to open %s file\r\n", file.name());
+        file.close();
+        return;
+      }
+
+      size_t size = file.size();
+      DEBUGLOG("%s file size: %d bytes\r\n", file.name(), size);
+
+      // size_t allocatedSize = 1024;
+      // if (size > allocatedSize)
+      // {
+      //   PRINT("WARNING, %s file size %d bytes is larger than allocatedSize %d bytes. Exiting...\r\n", file.name(), size, allocatedSize);
+      //   file.close();
+      //   return;
+      // }
+
+      // Allocate a buffer to store contents of the file
+      char buf[size + 1];
+
+      //copy file to buffer
+      file.readBytes(buf, size);
+
+      //add termination character at the end
+      buf[size] = '\0';
+
+      //close the file, save your memory, keep healthy :-)
+      file.close();
+
+      // DEBUGLOG("%s\r\n", buf);
+
+      size_t lenBuf = size;
+      DEBUGLOG("Template size: %d bytes\r\n", lenBuf);
+
+      //convert IP address to char array
+      size_t len = strlen(WiFi.localIP().toString().c_str());
+      char URLBase[len + 1];
+      strlcpy(URLBase, WiFi.localIP().toString().c_str(), sizeof(URLBase));
+
+      lenBuf = lenBuf + strlen(URLBase);
+
+      // const char *friendlyName = WiFi.hostname().toString().c_str();
+      len = strlen(WiFi.hostname().c_str());
+      char friendlyName[len + 1];
+      strlcpy(friendlyName, WiFi.hostname().c_str(), sizeof(friendlyName));
+
+      lenBuf = lenBuf + strlen(friendlyName);
+
+      char presentationURL[] = "/";
+
+      lenBuf = lenBuf + strlen(presentationURL);
+
+      uint32_t serialNumber = ESP.getChipId();
+
+      lenBuf = lenBuf + strlen(friendlyName);
+
+      char modelName[] = "ESP8266EX";
+
+      lenBuf = lenBuf + strlen(modelName);
+      const char *modelNumber = friendlyName;
+
+      lenBuf = lenBuf + strlen(modelNumber);
+
+      lenBuf = lenBuf + 6;
+      DEBUGLOG("Allocated size: %d bytes\r\n", lenBuf);
+
+      StreamString output;
+
+      if (output.reserve(lenBuf))
+      {
+        output.printf(buf,
+                      URLBase,
+                      friendlyName,
+                      presentationURL,
+                      serialNumber,
+                      modelName,
+                      modelNumber, //modelNumber
+                      (uint8_t)((serialNumber >> 16) & 0xff),
+                      (uint8_t)((serialNumber >> 8) & 0xff),
+                      (uint8_t)serialNumber & 0xff);
+        request->send(200, "text/xml", output);
+      }
+      else
+      {
+        request->send(500);
+      }
+    });
+  }
 
   ESPHTTPServer.serverInit(); // Configure and start Web server
 
@@ -962,6 +1080,17 @@ void AsyncFSWebServer::onWiFiDisconnected(WiFiEventStationModeDisconnected data)
     wifiDisconnectedSince = millis();
   }
   DEBUGLOG("\r\nDisconnected for %d seconds\r\n", (int)((millis() - wifiDisconnectedSince) / 1000));
+}
+
+void AsyncFSWebServer::onWifiGotIP(WiFiEventStationModeGotIP data)
+{
+  // wifiGotIpFlag = true;
+  WiFi.setAutoReconnect(true);
+
+  //Serial.printf_P(PSTR("\r\nWifi Got IP: %s\r\n"), data.ip.toString().c_str ());
+  DEBUGLOG("\r\nWifi Got IP\r\n");
+  // DEBUGLOG("IP Address:\t%s\r\n", WiFi.localIP().toString().c_str());
+  DEBUGLOG("IP Address:\t%s\r\n", data.ip.toString().c_str());
 }
 
 void AsyncFSWebServer::handleFileList(AsyncWebServerRequest *request)
