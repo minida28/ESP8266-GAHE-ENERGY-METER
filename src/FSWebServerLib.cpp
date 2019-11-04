@@ -936,7 +936,9 @@ bool AsyncFSWebServer::loadHTTPAuth()
 void AsyncFSWebServer::loop()
 {
   ArduinoOTA.handle();
+  ws.cleanupClients();
   dnsServer.processNextRequest();
+  MDNS.update();
 
   if (bClient)
   {
