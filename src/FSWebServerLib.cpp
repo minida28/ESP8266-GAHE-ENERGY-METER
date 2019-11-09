@@ -649,6 +649,7 @@ void AsyncFSWebServer::start(FS *fs)
   }
 
   loadHTTPAuth();
+
   //WIFI INIT
   if (_configTime.syncinterval > 0)
   { // Enable NTP sync
@@ -666,6 +667,23 @@ void AsyncFSWebServer::start(FS *fs)
     this->onWifiGotIP(data);
   });
 
+  DEBUGLOG("WiFi.getListenInterval(): %d\r\n", WiFi.getListenInterval());
+  DEBUGLOG("WiFi.isSleepLevelMax(): %d\r\n", WiFi.isSleepLevelMax());
+
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);
+  // WiFi.setSleepMode(WIFI_LIGHT_SLEEP);
+  // WiFi.setSleepMode(WIFI_MODEM_SLEEP);
+
+  DEBUGLOG("WiFi.getListenInterval(): %d\r\n", WiFi.getListenInterval());
+  DEBUGLOG("WiFi.isSleepLevelMax(): %d\r\n", WiFi.isSleepLevelMax());
+
+  WiFi.hostname(_config.hostname);
+
+  // WiFi.mode(WIFI_OFF); //=========== TESTING, ORIGINAL-NYA WIFI DIMATIKAN DULU
+
+  WiFi.setAutoConnect(true);
+  WiFi.setAutoReconnect(true);
+
   //WiFi.mode(WIFI_OFF);
   if (_apConfig.APenable)
   {
@@ -678,22 +696,20 @@ void AsyncFSWebServer::start(FS *fs)
   }
   else
   {
-    // configureWifi(); // Set WiFi config
-    // wifi_setup();
-    WiFi.setAutoReconnect(true);
+    DEBUGLOG("Starting wifi in WIFI_STA mode.\r\n");
+
     WiFi.mode(WIFI_STA);
-    DEBUGLOG("Set Wifi mode to WIFI_STA\r\n");
-    //WiFi.hostname("GAHE1");
-    WiFi.hostname(_config.hostname);
-    DEBUGLOG("Setting STA hostname to: %s\r\n", _config.hostname);
-    // WiFi.begin(esid.c_str(), epass.c_str());
-    // WiFi.begin(_config.ssid.c_str(), _config.pass.c_str());
-    WiFi.begin(_config.ssid, _config.password);
-    DEBUGLOG("Connecting to: %s, pass: %s\r\n", _config.ssid, _config.password);
-    WiFi.waitForConnectResult();
-    while (WiFi.status() != WL_CONNECTED)
+
+    if (WiFi.getAutoReconnect())
     {
-      delay(1000);
+      if (WiFi.waitForConnectResult(10000) == -1) // hit timeout
+      {
+        DEBUGLOG("Wifi connect timeout. Re-starting connection...\r\n");
+        WiFi.mode(WIFI_OFF);
+        WiFi.hostname(_config.hostname);
+        WiFi.begin(_config.ssid, _config.password);
+        WiFi.waitForConnectResult();
+      }
     }
   }
 
@@ -712,7 +728,7 @@ void AsyncFSWebServer::start(FS *fs)
 
   DEBUGLOG("Starting mDNS responder...\r\n");
   // if (!MDNS.begin(_config.hostname))
-  if (!MDNS.begin("esp8266"))
+  if (!MDNS.begin(_config.hostname))
   { // Start the mDNS responder for esp8266.local
     DEBUGLOG("Error setting up mDNS responder!\r\n");
   }
@@ -940,39 +956,6 @@ void AsyncFSWebServer::loop()
   dnsServer.processNextRequest();
   MDNS.update();
 
-  if (bClient)
-  {
-    static uint8_t bClientState = -1;
-
-    uint8_t state = bClient->state();
-    if (state != bClientState)
-    {
-      bClientState = state;
-      if (DEBUGVIAWS)
-      {
-        char buf[32];
-        sprintf_P(buf, PSTR("Thingspeak client state: %u"), bClientState);
-        ws.textAll(buf);
-      }
-    }
-  }
-
-  if (aClient)
-  {
-    static uint8_t aClientState = -1;
-
-    uint8_t state = aClient->state();
-    if (state != aClientState)
-    {
-      aClientState = state;
-      if (DEBUGVIAWS)
-      {
-        char buf[32];
-        sprintf_P(buf, PSTR("EmonCMS client state: %u"), aClientState);
-        ws.textAll(buf);
-      }
-    }
-  }
 }
 
 void AsyncFSWebServer::configureWifiAP()

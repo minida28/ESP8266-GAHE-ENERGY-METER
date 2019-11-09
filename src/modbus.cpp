@@ -23,7 +23,7 @@
 #define baud 9600
 
 #define timeout 200
-#define polling 20 // the scan rate; default value is 40
+#define polling 40 // the scan rate; default value is 40
 #define retry_count 0
 
 // used to toggle the receive/transmit pin on the driver
