@@ -42,7 +42,11 @@
 #define SECRET_FILE "/secret.json"
 #define DESCRIPTION_XML_FILE "/description.xml"
 
+extern FSInfo fs_info;
+
 extern AsyncWebSocket ws;
+extern AsyncEventSource evs;
+extern uint32_t clientID;
 
 //extern const char Page_WaitAndReload[];
 
@@ -117,7 +121,7 @@ protected:
   //AsyncWebSocket _ws("/ws"); // access at ws://[esp ip]/ws
   //AsyncWebSocket _ws = AsyncWebSocket("/ws");
 
-  AsyncEventSource _evs = AsyncEventSource("/events");
+  // AsyncEventSource _evs = AsyncEventSource("/events");
 
   // void sendTimeData();
   bool load_config();
@@ -185,11 +189,13 @@ protected:
 extern AsyncFSWebServer ESPHTTPServer;
 void esp_restart();
 
+extern bool sendDateTimeFlag;
+
 
 void runAsyncClientEmoncms();
 void runAsyncClientThingspeak();
 
-extern uint16_t num;
+// extern uint16_t num;
 
 //extern char bufXML[1000];
 //extern void handleXML();

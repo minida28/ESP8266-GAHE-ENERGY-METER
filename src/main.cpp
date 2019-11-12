@@ -155,12 +155,21 @@ bool save_system_info()
   char compileTime[lenCompileTime + 1];
   strcpy_P(compileTime, PSTR(__TIME__));
 
-  DynamicJsonDocument root(1024);
+  StaticJsonDocument<1024> root;
+
+  SPIFFS.info(fs_info);
+
+  root[FPSTR(pgm_totalbytes)] = fs_info.totalBytes;
+  root[FPSTR(pgm_usedbytes)] = fs_info.usedBytes;
+  root[FPSTR(pgm_blocksize)] = fs_info.blockSize;
+  root[FPSTR(pgm_pagesize)] = fs_info.pageSize;
+  root[FPSTR(pgm_maxopenfiles)] = fs_info.maxOpenFiles;
+  root[FPSTR(pgm_maxpathlength)] = fs_info.maxPathLength;
 
   root[FPSTR(pgm_filename)] = fileName;
   root[FPSTR(pgm_compiledate)] = compileDate;
   root[FPSTR(pgm_compiletime)] = compileTime;
-  root[FPSTR(pgm_lastboot)] = getTimeStr();
+  // root[FPSTR(pgm_lastboot)] = getLastBootStr();
   root[FPSTR(pgm_chipid)] = ESP.getChipId();
   root[FPSTR(pgm_cpufreq)] = ESP.getCpuFreqMHz();
   root[FPSTR(pgm_sketchsize)] = ESP.getSketchSize();
@@ -171,7 +180,7 @@ bool save_system_info()
   root[FPSTR(pgm_flashchiprealsize)] = ESP.getFlashChipRealSize();
   root[FPSTR(pgm_flashchipspeed)] = ESP.getFlashChipSpeed();
   root[FPSTR(pgm_cyclecount)] = ESP.getCycleCount();
-  root[FPSTR(pgm_corever)] = ESP.getCoreVersion();
+  root[FPSTR(pgm_corever)] = ESP.getFullVersion();
   root[FPSTR(pgm_sdkver)] = ESP.getSdkVersion();
   root[FPSTR(pgm_bootmode)] = ESP.getBootMode();
   root[FPSTR(pgm_bootversion)] = ESP.getBootVersion();

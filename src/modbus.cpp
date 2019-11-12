@@ -23,7 +23,7 @@
 #define baud 9600
 
 #define timeout 1500
-#define polling 30 // the scan rate; default value is 40
+#define polling 25 // the scan rate; default value is 40
 #define retry_count 0
 
 // used to toggle the receive/transmit pin on the driver
@@ -244,7 +244,7 @@ void modbus_loop_1()
               packets[PACKET1].failed_requests,
               millis() / 1000);
 
-    if (ws.hasClient(num))
+    if (ws.hasClient(clientID))
     {
       ws.textAll(output);
     }
@@ -355,7 +355,7 @@ void modbus_loop_1()
               packets[PACKET1].failed_requests,
               millis() / 1000);
 
-    if (ws.hasClient(num))
+    if (ws.hasClient(clientID))
     {
       ws.textAll(output);
     }
@@ -397,7 +397,7 @@ void modbus_loop_1()
     char buf[len + 1];
     serializeJson(root, buf, sizeof(buf));
 
-    if (ws.hasClient(num))
+    if (ws.hasClient(clientID))
     {
       ws.textAll(buf);
     }
@@ -586,7 +586,7 @@ void modbus_loop()
   // return;
 
   //process only if websocket has client or MQTT is connected
-  if (WiFi.status() == WL_CONNECTED || (ws.hasClient(num) || mqttClient.connected()))
+  if (WiFi.status() == WL_CONNECTED || (ws.hasClient(clientID) || mqttClient.connected()))
   {
   }
   else

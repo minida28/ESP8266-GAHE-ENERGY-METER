@@ -6,6 +6,8 @@
 #include "sntphelper.h"
 #include "EspGoodies.h"
 // #include "rtchelper.h"
+#include "FSWebServerLib.h"
+#include "gahe1progmem.h"
 
 #define DEBUGPORT Serial
 
@@ -36,7 +38,7 @@ timeval cbtime; // time set in callback
 bool cbtime_set = false;
 uint32_t now_ms, now_us;
 time_t uptime;
-time_t lastSync; ///< Stored time of last successful sync
+time_t lastSync;   ///< Stored time of last successful sync
 time_t _firstSync; ///< Stored time of first successful sync after boot
 time_t _lastBoot;
 
@@ -86,7 +88,7 @@ char *getDateStr()
     time_t rawtime;
     time(&rawtime);
     struct tm *timeinfo = localtime(&rawtime);
-    strftime(buf, sizeof(buf)/sizeof(buf[0]), "%a %d %b %Y", timeinfo);
+    strftime(buf, sizeof(buf) / sizeof(buf[0]), "%a %d %b %Y", timeinfo);
 
     return buf;
 }
@@ -98,7 +100,7 @@ char *getTimeStr()
     time_t rawtime;
     time(&rawtime);
     struct tm *timeinfo = localtime(&rawtime);
-    strftime(buf, sizeof(buf)/sizeof(buf[0]), "%T", timeinfo);
+    strftime(buf, sizeof(buf) / sizeof(buf[0]), "%T", timeinfo);
 
     return buf;
 }
@@ -204,6 +206,99 @@ char *getNextSyncStr()
     return buf;
 }
 
+void sendDateTime(uint8_t mode)
+{
+    DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+
+    struct tm *ptm;
+
+    now = time(nullptr);
+
+    ptm = localtime(&now);
+
+    time_t lastBoot = now - uptime;
+
+    DynamicJsonDocument root(2048);
+
+    root["d"] = ptm->tm_mday;
+    root["m"] = ptm->tm_mon;
+    root["y"] = ptm->tm_year + 1900;
+    root["hr"] = ptm->tm_hour;
+    root["min"] = ptm->tm_min;
+    root["sec"] = ptm->tm_sec;
+    // root["tz"] = TimezoneFloat();
+    //   root["tzStr"] = _configLocation.timezonestring;
+    root["utc"] = (uint32_t)now;
+    // root["local"] = localTime;
+
+    // root[FPSTR(pgm_date)] = getDateStr(localTime);
+    // root[FPSTR(pgm_time)] = getTimeStr(localTime);
+    root[FPSTR(pgm_uptime)] = millis() / 1000;
+    root[FPSTR(pgm_lastboot)] = lastBoot;
+    // root[FPSTR(pgm_internetstatus)] = FPSTR(internetstatus_P[internet]);
+    // root[FPSTR(pgm_rtcstatus)] = FPSTR(rtcstatus_P[GetRtcStatus()]);
+
+    //   if (syncByRtcFlag)
+    //   {
+    //     root[FPSTR(pgm_lastsyncby)] = FPSTR(pgm_RTC);
+    //   }
+    //   else if (syncByNtpFlag)
+    //   {
+    //     root[FPSTR(pgm_lastsyncby)] = FPSTR(pgm_NTP);
+    //   }
+    //   else
+    //   {
+    //     root[FPSTR(pgm_lastsyncby)] = FPSTR(pgm_None);
+    //   }
+
+    //   root[FPSTR(pgm_nextsync)] = getNextSyncStr();
+
+    // if (lastSyncByNtp)
+    if (true)
+    {
+        root[FPSTR(pgm_lastsyncbyntp)] = lastSync;
+        root[FPSTR(pgm_nextsync)] = lastSync + 3600;
+    }
+    else
+    {
+        root[FPSTR(pgm_lastsyncbyntp)] = FPSTR(pgm_never);
+    }
+
+    //   if (lastSyncByRtc)
+    //   {
+    //     root[FPSTR(pgm_lastsyncbyrtc)] = getLastSyncStr(lastSyncByRtc);
+    //   }
+    //   else
+    //   {
+    //     root[FPSTR(pgm_lastsyncbyrtc)] = FPSTR(pgm_never);
+    //   }
+
+    size_t len = measureJson(root);
+    char buf[len + 1];
+    serializeJson(root, buf, len + 1);
+
+    if (mode == 0)
+    {
+        //
+    }
+    else if (mode == 1)
+    {
+        evs.send(buf);
+        // events.send(buf, "timeDate", millis());
+    }
+    else if (mode == 2)
+    {
+        if (ws.hasClient(clientID))
+        {
+            ws.text(clientID, buf);
+        }
+        else
+        {
+            DEBUGLOG("ClientID %d is no longer available.\r\n", clientID);
+        }
+    }
+}
+
 void timeSetup()
 {
     // Synchronize time useing SNTP. This is necessary to verify that
@@ -238,5 +333,11 @@ void timeLoop()
         cbtime_set = false;
 
         lastSync = now;
+    }
+
+    if (sendDateTimeFlag)
+    {
+        sendDateTimeFlag = false;
+        sendDateTime(2);
     }
 }

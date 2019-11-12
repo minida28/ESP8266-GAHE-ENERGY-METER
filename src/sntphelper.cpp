@@ -1,8 +1,24 @@
 #include <Arduino.h>
+#include "FSWebServerLib.h"
 #include "sntphelper.h"
 #include <time.h>      // time() ctime()
 #include <sys/time.h>  // struct timeval
 #include <coredecls.h> // settimeofday_cb()
+
+
+#define DEBUGPORT Serial
+
+// #define RELEASE
+
+#ifndef RELEASE
+#define DEBUGLOG(fmt, ...)                       \
+    {                                            \
+        static const char pfmt[] PROGMEM = fmt;  \
+        DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
+    }
+#else
+#define DEBUGLOG(...)
+#endif
 
 extern "C"
 {

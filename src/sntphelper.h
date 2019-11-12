@@ -9,4 +9,7 @@ extern bool NTP_OK;
 
 time_t getNtpTimeSDK();
 
+// void Timesetup();
+void Timeloop();
+
 #endif

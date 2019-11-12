@@ -27,14 +27,25 @@
 #define DEBUGLOG(...)
 #endif
 
-uint16_t num;
+// uint16_t num;
+uint32_t clientID;
 
 #define PARAMETER_XML_FILE "/parameter2.xml"
 
+FSInfo fs_info;
+
 DNSServer dnsServer;
 AsyncWebSocket ws("/ws");
+AsyncEventSource evs("/events");
 
 bool DEBUGVIAWS = true;
+
+uint32_t timestampReceivedFromWebGUI = 0;
+
+bool configFileTimeUpdated = false;
+bool sendFreeHeapStatusFlag = false;
+bool sendDateTimeFlag = false;
+bool setDateTimeFromGUIFlag = false;
 
 // How to use the async client?
 // https://github.com/me-no-dev/ESPAsyncTCP/issues/18
@@ -423,7 +434,8 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
     //os_printf("ws[%s][%u] connect\n", server->url(), client->id());
     client->printf("Hello Client %u :)", client->id());
     client->ping();
-    num = client->id();
+    // num = client->id();
+    clientID = client->id();
   }
   else if (type == WS_EVT_DISCONNECT)
   {
@@ -506,6 +518,80 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
         }
       }
     }
+
+    // if (strncmp_P((char *)data, pgm_schedulepagesholat, strlen_P(pgm_schedulepagesholat)) == 0)
+    // {
+    //   // clientVisitSholatTimePage = true;
+    // }
+    if (strncmp_P((char *)data, pgm_settimepage, strlen_P(pgm_settimepage)) == 0)
+    {
+      sendDateTimeFlag = true;
+    }
+    else if (strncmp_P((char *)data, pgm_freeheap, strlen_P(pgm_freeheap)) == 0)
+    {
+      sendFreeHeapStatusFlag = true;
+    }
+    else if (strncmp((char *)data, "/status/datetime", strlen("/status/datetime")) == 0)
+    {
+      sendDateTimeFlag = true;
+    }
+    else if (data[0] == '{')
+    {
+      StaticJsonDocument<1024> root;
+      DeserializationError error = deserializeJson(root, data);
+
+      if (error)
+      {
+        return;
+      }
+
+      //******************************
+      // handle SAVE CONFIG (not fast)
+      //******************************
+
+      if (root.containsKey(FPSTR(pgm_saveconfig)))
+      {
+        const char *saveconfig = root[FPSTR(pgm_saveconfig)];
+
+        //remove json key before saving
+        root.remove(FPSTR(pgm_saveconfig));
+
+        if (false)
+        {
+        }
+        //******************************
+        // save TIME config
+        //******************************
+        else if (strcmp_P(saveconfig, pgm_configpagetime) == 0)
+        {
+          File file = SPIFFS.open(FPSTR(pgm_configfiletime), "w");
+
+          if (!file)
+          {
+            DEBUGLOG("Failed to open TIME config file\r\n");
+            file.close();
+            return;
+          }
+
+          serializeJsonPretty(root, file);
+          file.flush();
+          file.close();
+
+          configFileTimeUpdated = true;
+
+          //beep
+        }
+      }
+    }
+    else if (data[0] == 't' && data[1] == ' ')
+    {
+      char *token = strtok((char *)&data[2], " ");
+
+      timestampReceivedFromWebGUI = (unsigned long)strtol(token, '\0', 10);
+
+      setDateTimeFromGUIFlag = true;
+    }
+
   }
 }
 
@@ -1749,7 +1835,7 @@ void AsyncFSWebServer::restart_esp(AsyncWebServerRequest *request)
   request->send_P(200, PSTR("text/html"), Page_Restart);
   DEBUGLOG("%s\r\n", __FUNCTION__);
   mqttClient.disconnect();
-  _evs.close();
+  evs.close();
   ws.closeAll();
   _fs->end(); // SPIFFS.end();
   // ESP.restart();
@@ -2024,12 +2110,12 @@ void AsyncFSWebServer::serverInit()
 {
   //SERVER INIT
 
-  _evs.onConnect([](AsyncEventSourceClient *client) {
+  evs.onConnect([](AsyncEventSourceClient *client) {
     DEBUGLOG("Event source client connected from %s\r\n", client->client()->remoteIP().toString().c_str());
     //client->send("hello!",NULL,millis(),1000);
     //sendTimeData();
   });
-  addHandler(&_evs);
+  addHandler(&evs);
 
   ws.onEvent(onWsEvent);
   addHandler(&ws);

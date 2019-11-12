@@ -38,8 +38,8 @@ setInterval(function(){ countdown(); },1000);
 </script>
 )=====";
 
-const char pgm_configfilenetwork[] PROGMEM = "/confignetwork.json";
-const char pgm_configfiletime[] PROGMEM = "/configtime.json";
+// const char pgm_configfilenetwork[] PROGMEM = "/confignetwork.json";
+// const char pgm_configfiletime[] PROGMEM = "/configtime.json";
 
 //network
 const char pgm_ssid[] PROGMEM = "ssid";
@@ -75,22 +75,50 @@ const char pgm_WIFI_OFF[] PROGMEM = "WIFI_OFF";
 const char pgm_NA[] PROGMEM = "N/A";
 
 //time
-const char pgm_ntpserver_0[] PROGMEM = "ntpserver_0";
-const char pgm_ntpserver_1[] PROGMEM = "ntpserver_1";
-const char pgm_ntpserver_2[] PROGMEM = "ntpserver_2";
-const char pgm_syncinterval[] PROGMEM = "syncinterval";
-const char pgm_timezone[] PROGMEM = "timezone";
-const char pgm_dst[] PROGMEM = "dst";
+// const char pgm_ntpserver_0[] PROGMEM = "ntpserver_0";
+// const char pgm_ntpserver_1[] PROGMEM = "ntpserver_1";
+// const char pgm_ntpserver_2[] PROGMEM = "ntpserver_2";
+// const char pgm_syncinterval[] PROGMEM = "syncinterval";
+// const char pgm_timezone[] PROGMEM = "timezone";
+// const char pgm_dst[] PROGMEM = "dst";
 const char pgm_checked[] PROGMEM = "checked";
 const char pgm_blank[] PROGMEM = "";
 
+// const char pgm_time[] PROGMEM = "time";
+// const char pgm_date[] PROGMEM = "date";
+// const char pgm_lastsync[] PROGMEM = "lastsync";
+// const char pgm_nextsync[] PROGMEM = "nextsync";
+// const char pgm_uptime[] PROGMEM = "uptime";
+// const char pgm_enablentp[] PROGMEM = "enablentp";
+// const char pgm_enablertc[] PROGMEM = "enablertc";
+
+//time
 const char pgm_time[] PROGMEM = "time";
 const char pgm_date[] PROGMEM = "date";
+// const char pgm_lastboot[] PROGMEM = "lastboot";
 const char pgm_lastsync[] PROGMEM = "lastsync";
+const char pgm_lastsyncby[] PROGMEM = "lastsyncby";
+const char pgm_lastsyncbyntp[] PROGMEM = "lastsyncbyntp";
+const char pgm_lastsyncbyrtc[] PROGMEM = "lastsyncbyrtc";
 const char pgm_nextsync[] PROGMEM = "nextsync";
 const char pgm_uptime[] PROGMEM = "uptime";
 const char pgm_enablentp[] PROGMEM = "enablentp";
 const char pgm_enablertc[] PROGMEM = "enablertc";
+const char pgm_rtcstatus[] PROGMEM = "rtcstatus";
+
+const char pgm_province[] PROGMEM = "province";
+const char pgm_regency[] PROGMEM = "regency";
+const char pgm_district[] PROGMEM = "district";
+const char pgm_timezone[] PROGMEM = "timezone";
+const char pgm_timezonestring[] PROGMEM = "timezonestring";
+const char pgm_latitude[] PROGMEM = "latitude";
+const char pgm_longitude[] PROGMEM = "longitude";
+const char pgm_dst[] PROGMEM = "dst";
+const char pgm_ntpserver_0[] PROGMEM = "ntpserver_0";
+const char pgm_ntpserver_1[] PROGMEM = "ntpserver_1";
+const char pgm_ntpserver_2[] PROGMEM = "ntpserver_2";
+const char pgm_syncinterval[] PROGMEM = "syncinterval";
+const char pgm_never[] PROGMEM = "NEVER";
 
 
 //const char pgm_devicename[] PROGMEM = "/rumah";
@@ -127,13 +155,13 @@ const char pgm_unk2[] PROGMEM = "unk2";
 
 const char pgm_templaterequest[] PROGMEM = "templaterequest";
 const char pgm_method[] PROGMEM = "method";
-const char pgm_url[] PROGMEM = "url";
+// const char pgm_url[] PROGMEM = "url";
 const char pgm_node[] PROGMEM = "node";
 const char pgm_apikey[] PROGMEM = "apikey";
 const char pgm_host[] PROGMEM = "host";
 const char pgm_online[] PROGMEM = "ONLINE";
 
-const char pgm_descriptionxmlfile[] PROGMEM = "/description.xml";
+// const char pgm_descriptionxmlfile[] PROGMEM = "/description.xml";
 
 //system info
 const char pgm_filename[] PROGMEM = "filename";
@@ -156,9 +184,55 @@ const char pgm_bootmode[] PROGMEM = "bootmode";
 const char pgm_bootversion[] PROGMEM = "bootversion";
 const char pgm_resetreason[] PROGMEM = "resetreason";
 
+const char pgm_url[] PROGMEM = "url";
+const char pgm_param[] PROGMEM = "param";
+const char pgm_value[] PROGMEM = "value";
+const char pgm_text[] PROGMEM = "text";
+const char pgm_type[] PROGMEM = "type";
+const char pgm_descriptionxmlfile[] PROGMEM = "/description.xml";
+const char pgm_systeminfofile[] PROGMEM = "/systeminfo.json";
+const char pgm_statuspagesystem[] PROGMEM = "/status.html";
+const char pgm_saveconfig[] PROGMEM = "saveconfig";
+const char pgm_configpagelocation[] PROGMEM = "/configlocation.html";
+const char pgm_configfilelocation[] PROGMEM = "/configlocation.json";
+const char pgm_configpagenetwork[] PROGMEM = "/confignetwork.html";
+const char pgm_configfilenetwork[] PROGMEM = "/confignetwork.json";
+const char pgm_statuspagenetwork[] PROGMEM = "/statusnetwork.html";
+const char pgm_configpagetime[] PROGMEM = "/configtime.html";
+const char pgm_configfiletime[] PROGMEM = "/configtime.json";
+const char pgm_statuspagetime[] PROGMEM = "/statustime.html";
+const char pgm_configpageledmatrix[] PROGMEM = "/configledmatrix.html";
+const char pgm_configfileledmatrix[] PROGMEM = "/configledmatrix.json";
+const char pgm_configpagesholat[] PROGMEM = "/configsholat.html";
+const char pgm_configfilesholat[] PROGMEM = "/configsholat.json";
+const char pgm_schedulepagesholat[] PROGMEM = "/sholat.html";
+const char pgm_configpagemqtt[] PROGMEM = "/configmqtt.html";
+const char pgm_configfilemqtt[] PROGMEM = "/configmqtt.json";
+const char pgm_statuspagemqtt[] PROGMEM = "/statusmqtt.html";
+const char pgm_configpagemqttpubsub[] PROGMEM = "configPubSub";
+const char pgm_configfilemqttpubsub[] PROGMEM = "/configmqttpubsub.json";
+const char pgm_settimepage[] PROGMEM = "/setrtctime.html";
+
+
 
 //url
-const char pgm_systeminfofile[] PROGMEM = "/systeminfo.json";
+// const char pgm_systeminfofile[] PROGMEM = "/systeminfo.json";
+
+
+//system
+const char pgm_heapstart[] PROGMEM = "heapstart";
+const char pgm_heapend[] PROGMEM = "heapend";
+const char pgm_heap[] PROGMEM = "heap";
+const char pgm_freeheap[] PROGMEM = "freeheap";
+
+
+//SPIIFS
+const char pgm_totalbytes[] PROGMEM = "totalbytes";
+const char pgm_usedbytes[] PROGMEM = "usedbytes";
+const char pgm_blocksize[] PROGMEM = "blocksize";
+const char pgm_pagesize[] PROGMEM = "pagesize";
+const char pgm_maxopenfiles[] PROGMEM = "maxopenfiles";
+const char pgm_maxpathlength[] PROGMEM = "maxpathlength";
 
 
 #endif
