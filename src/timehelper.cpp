@@ -2,12 +2,13 @@
 #include <time.h>
 #include <sys/time.h>  // struct timeval
 #include <coredecls.h> // settimeofday_cb()
-#include "timehelper.h"
-#include "sntphelper.h"
+// #include "timehelper.h"
+// #include "sntphelper.h"
 #include "EspGoodies.h"
 // #include "rtchelper.h"
 #include "FSWebServerLib.h"
 #include "gahe1progmem.h"
+#include "config.h"
 
 #define DEBUGPORT Serial
 
@@ -26,6 +27,7 @@
 
 // for testing purpose:
 extern "C" int clock_gettime(clockid_t unused, struct timespec *tp);
+
 
 bool tick1000ms = false;
 

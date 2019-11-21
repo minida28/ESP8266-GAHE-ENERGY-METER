@@ -25,9 +25,12 @@
 
 #include <Arduino.h>
 
+#include <ArduinoJson.h>
 #include "modbus.h"
 #include "mqtt.h"
-
+#include "gahe1progmem.h"
+#include "FSWebServerLib.h"
+#include "config.h"
 
 #define RELEASE
 
@@ -42,6 +45,9 @@
 #else
 #define DEBUGLOG(...)
 #endif
+
+#define MQTT_CONFIG_FILE "/configMqtt.json"
+#define PUBSUBJSON_FILE "/pubsub.json"
 
 const char pgm_txt_subcribedTopic_0[] PROGMEM = "/rumah/sts/1s/kwh1/watt";
 const char pgm_txt_subcribedTopic_1[] PROGMEM = "/rumah/sts/1s/kwh1/voltage";
@@ -73,26 +79,27 @@ int i = 0;
 char bufTopic[64];
 char bufPayload[256];
 
+
 AsyncMqttClient mqttClient;
 
 Ticker mqttReconnectTimer;
 
-WiFiEventHandler wifiConnectHandlerForMqtt;
-WiFiEventHandler wifiDisconnectHandlerForMqtt;
+// WiFiEventHandler wifiConnectHandlerForMqtt;
+// WiFiEventHandler wifiDisconnectHandlerForMqtt;
 
 //IPAddress mqttServer(192, 168, 10, 3);
 
 // MQTT config struct
 strConfigMqtt configMqtt;
 
-void onWifiConnect(const WiFiEventStationModeGotIP &event)
-{
-  DEBUGLOG("Connected to Wi-Fi.\r\n");
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    connectToMqtt();
-  }
-}
+// void onWifiConnect(const WiFiEventStationModeGotIP &event)
+// {
+//   DEBUGLOG("Connected to Wi-Fi.\r\n");
+//   if (WiFi.status() == WL_CONNECTED)
+//   {
+//     connectToMqtt();
+//   }
+// }
 
 void onWifiDisconnect(const WiFiEventStationModeDisconnected &event)
 {
@@ -132,7 +139,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
   mqttOnMessageFlag = true;
 
   DEBUGLOG("Payload received\r\n  topic: %s\r\n  qos: %d\r\n  dup: %d\r\n  retain: %d\r\n  len: %d\r\n  index: %d\r\n  total: %d\r\n",
-            topic, properties.qos, properties.dup, properties.retain, len, index, total);
+           topic, properties.qos, properties.dup, properties.retain, len, index, total);
 
   size_t lenTopic = strlen(topic) + 1;
   DEBUGLOG("topic len:%d, payload len:%d", lenTopic, len);
@@ -167,43 +174,9 @@ void onMqttPublish(uint16_t packetId)
   mqttPublishFlag = true;
 }
 
-bool mqtt_setup()
-{
-  //register mqtt handler
-  wifiConnectHandlerForMqtt = WiFi.onStationModeGotIP(onWifiConnect);
-  wifiDisconnectHandlerForMqtt = WiFi.onStationModeDisconnected(onWifiDisconnect);
-
-  mqttClient.onConnect(onMqttConnect);
-  mqttClient.onDisconnect(onMqttDisconnect);
-  mqttClient.onSubscribe(onMqttSubscribe);
-  mqttClient.onUnsubscribe(onMqttUnsubscribe);
-  mqttClient.onMessage(onMqttMessage);
-  mqttClient.onPublish(onMqttPublish);
-
-  if (!mqtt_load_config())
-  {
-    return false;
-  }
-
-  mqttClient.setServer(configMqtt.server, configMqtt.port);
-  mqttClient.setCredentials(configMqtt.user, configMqtt.pass);
-  mqttClient.setClientId(configMqtt.clientid);
-  mqttClient.setKeepAlive(configMqtt.keepalive);
-  mqttClient.setCleanSession(configMqtt.cleansession);
-  mqttClient.setWill(configMqtt.lwttopic, configMqtt.lwtqos,
-                     configMqtt.lwtretain, configMqtt.lwtpayload);
-
-  if (!mqtt_load_pubsubconfig())
-  {
-    return false;
-  }
-
-  return true;
-}
-
 bool mqtt_load_config()
 {
-  SPIFFS.begin();
+  // SPIFFS.begin();
 
   File configFile = SPIFFS.open(MQTT_CONFIG_FILE, "r");
   if (!configFile)
@@ -415,8 +388,50 @@ void MqttDisconnectedCb()
   }
 }
 
+bool mqtt_setup()
+{
+  //register mqtt handler
+  // wifiConnectHandlerForMqtt = WiFi.onStationModeGotIP(onWifiConnect);
+  // wifiDisconnectHandlerForMqtt = WiFi.onStationModeDisconnected(onWifiDisconnect);
+
+  mqttClient.onConnect(onMqttConnect);
+  mqttClient.onDisconnect(onMqttDisconnect);
+  mqttClient.onSubscribe(onMqttSubscribe);
+  mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  mqttClient.onMessage(onMqttMessage);
+  mqttClient.onPublish(onMqttPublish);
+
+  if (!mqtt_load_config())
+  {
+    return false;
+  }
+
+  mqttClient.setServer(configMqtt.server, configMqtt.port);
+  mqttClient.setCredentials(configMqtt.user, configMqtt.pass);
+  mqttClient.setClientId(configMqtt.clientid);
+  mqttClient.setKeepAlive(configMqtt.keepalive);
+  mqttClient.setCleanSession(configMqtt.cleansession);
+  mqttClient.setWill(configMqtt.lwttopic, configMqtt.lwtqos,
+                     configMqtt.lwtretain, configMqtt.lwtpayload);
+
+  if (!mqtt_load_pubsubconfig())
+  {
+    return false;
+  }
+
+  return true;
+}
+
 void mqtt_loop()
 {
+  static bool mqttConnectionTriggered = false;
+  if (wifiGotIpFlag && !mqttConnectionTriggered)
+  {
+    mqttConnectionTriggered = true;
+    
+    connectToMqtt();
+  }
+
   if (mqttConnectedFlag)
   {
     mqttConnectedFlag = false;

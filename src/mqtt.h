@@ -24,8 +24,8 @@
 */
 
 
-#ifndef _MYENERGYMETER_H
-#define _MYENERGYMETER_H
+#ifndef _mqtthelper_h
+#define _mqtthelper_h
 
 // -------------------------------------------------------------------
 // MQTT support
@@ -37,16 +37,7 @@
 #include <ESP8266WiFi.h>
 #include <Ticker.h>
 
-#include "config.h"
-
-#define MQTT_CONFIG_FILE "/configMqtt.json"
-#define PUBSUBJSON_FILE "/pubsub.json"
-
 extern AsyncMqttClient mqttClient;
-extern IPAddress mqttServer;
-
-extern const char pgm_txt_subcribedTopic_0[];
-extern const char pgm_txt_subcribedTopic_1[];
 
 // MQTT config
 typedef struct {
@@ -90,53 +81,17 @@ typedef struct {
 
 extern  strConfigMqtt configMqtt;
 
-//
-void connectToMqtt();
 
-void MqttConnectedCb();
-
-void MqttDisconnectedCb();
-
-// -------------------------------------------------------------------
-// Perform the background MQTT operations. Must be called in the main
-// loop function
-// -------------------------------------------------------------------
 extern void mqtt_loop();
 
-// -------------------------------------------------------------------
-// Publish values to MQTT
-//
-// data: a comma seperated list of name:value pairs to send
-// -------------------------------------------------------------------
-extern void mqtt_publish(String data);
-
-// -------------------------------------------------------------------
-// Restart the MQTT connection
-// -------------------------------------------------------------------
-extern void mqtt_restart();
-
-
-// -------------------------------------------------------------------
-// Return true if we are connected to an MQTT broker, false if not
-// -------------------------------------------------------------------
-extern boolean mqtt_connected();
-
-// -------------------------------------------------------------------
-// Initialize MQTT connection
-// -------------------------------------------------------------------
-bool mqtt_load_config();
-bool mqtt_load_pubsubconfig();
 extern bool mqtt_setup();
 
-extern bool mqtt_reconnect();
-
-extern uint16_t wattThreshold;
-extern float currentThreshold;
+// extern bool mqtt_reconnect();
 
 
 
 
-#endif // _LEDMATRIX_MQTT_H
+#endif //
 
 
 

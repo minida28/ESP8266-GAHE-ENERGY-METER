@@ -3,7 +3,7 @@
 
 #include "SimpleModbusMaster.h"
 //#include <SoftwareSerial.h>
-#include "config.h"
+// #include "config.h"
 
 // This is the easiest way to create new packets
 // Add as many as you want. TOTAL_NO_OF_PACKETS
@@ -49,6 +49,10 @@ extern char bufSuccessful_requestsPACKET3[10];
 extern char bufFailed_requestsPACKET3[10];
 extern char bufException_errorsPACKET3[10];
 extern char bufConnectionPACKET3[10];
+
+
+extern uint16_t wattThreshold;
+extern float currentThreshold;
 
 
 // -------------------------------------------------------------------

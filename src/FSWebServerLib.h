@@ -35,6 +35,22 @@
 // #define DEBUGLOG(...)
 // #endif
 
+
+#define ESP_PIN_0 0   //D3
+#define ESP_PIN_1 1   //Tx
+#define ESP_PIN_2 2   //D4 -> Led on NodeMcu
+#define ESP_PIN_3 3   //D9(Rx)
+#define ESP_PIN_4 4   //D2
+#define ESP_PIN_5 5   //D1
+#define ESP_PIN_9 9   //S2
+#define ESP_PIN_10 10 //S3
+#define ESP_PIN_12 12 //D6
+#define ESP_PIN_13 13 //D7
+#define ESP_PIN_14 14 //D5
+#define ESP_PIN_15 15 //D8
+#define ESP_PIN_16 16 //D0 -> Led on ESP8266
+
+
 #define CONNECTION_LED -1           // Connection LED pin (Built in). -1 to disable
 #define AP_ENABLE_BUTTON ESP_PIN_12 //D6 wemos; Button pin to enable AP during startup for configuration. -1 to disable
 
@@ -190,6 +206,7 @@ extern AsyncFSWebServer ESPHTTPServer;
 void esp_restart();
 
 extern bool sendDateTimeFlag;
+extern bool wifiGotIpFlag;
 
 
 void runAsyncClientEmoncms();

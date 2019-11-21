@@ -2,20 +2,29 @@
 #include <StreamString.h>
 #include <Arduino.h>
 
-#include "config.h"
+#include <Arduino.h>
+//#include "AsyncJson.h"
+#include <ArduinoJson.h>
+#include <SPIFFSEditor.h>
+#include <DNSServer.h>
+#include <StreamString.h>
+#include <time.h>
+
+#include "FSWebServerLib.h"
+#include "gahe1progmem.h"
+
+#include "timehelper.h"
+// #include "sntphelper.h"
+#include <pgmspace.h>
+
+// #include "config.h"
 #include "modbus.h"
-#include "mqtt.h"
+// #include "mqtt.h"
+#include "config.h"
 
 #define RELEASE
 
 #define DEBUGPORT Serial
-#define PRINTPORT Serial
-
-#define PRINT(fmt, ...)                      \
-  {                                          \
-    static const char pfmt[] PROGMEM = fmt;  \
-    PRINTPORT.printf_P(pfmt, ##__VA_ARGS__); \
-  }
 
 #ifndef RELEASE
 #define DEBUGLOG(fmt, ...)                   \
@@ -46,6 +55,7 @@ bool configFileTimeUpdated = false;
 bool sendFreeHeapStatusFlag = false;
 bool sendDateTimeFlag = false;
 bool setDateTimeFromGUIFlag = false;
+bool wifiGotIpFlag = false;
 
 // How to use the async client?
 // https://github.com/me-no-dev/ESPAsyncTCP/issues/18
@@ -165,7 +175,7 @@ void runAsyncClientEmoncms()
     File file = SPIFFS.open("/emoncms.json", "r");
     if (!file)
     {
-      PRINT("Failed to open config file\r\n");
+      DEBUGLOG("Failed to open config file\r\n");
       return;
     }
     size_t size = file.size();
@@ -358,7 +368,7 @@ void runAsyncClientThingspeak()
     File file = SPIFFS.open(PSTR("/thingspeak.json"), "r");
     if (!file)
     {
-      PRINT("Failed to open config file\r\n");
+      DEBUGLOG("Failed to open config file\r\n");
       return;
     }
     size_t size = file.size();
@@ -591,7 +601,6 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
 
       setDateTimeFromGUIFlag = true;
     }
-
   }
 }
 
@@ -617,25 +626,6 @@ AsyncFSWebServer ESPHTTPServer(80);
 //AsyncWebSocket.addHandler(&_ws);
 
 AsyncFSWebServer::AsyncFSWebServer(uint16_t port) : AsyncWebServer(port) {}
-
-/*void AsyncFSWebServer::secondTick()
-  {
-    _secondFlag = true;
-  }*/
-
-/*void AsyncFSWebServer::secondTask() {
-    //DEBUGLOG("%s\r\n", NTP.getTimeDateString().c_str());
-    sendTimeData();
-  }*/
-
-// void AsyncFSWebServer::s_secondTick(void *arg)
-// {
-//   AsyncFSWebServer *self = reinterpret_cast<AsyncFSWebServer *>(arg);
-//   if (self->_evs.count() > 0)
-//   {
-//     self->sendTimeData();
-//   }
-// }
 
 String formatBytes(size_t bytes)
 {
@@ -672,9 +662,208 @@ void flashLED(int pin, int times, int delayTime)
   digitalWrite(pin, oldState); // Turn on LED
 }
 
+int pgm_lastIndexOf(uint8_t c, const char *p)
+{
+  int last_index = -1; // -1 indicates no match
+  uint8_t b;
+  for (int i = 0; true; i++)
+  {
+    b = pgm_read_byte(p++);
+    if (b == c)
+      last_index = i;
+    else if (b == 0)
+      break;
+  }
+  return last_index;
+}
+
+// displays at startup the Sketch running in the Arduino
+void display_srcfile_details(void)
+{
+  const char *the_path = PSTR(__FILE__); // save RAM, use flash to hold __FILE__ instead
+
+  int slash_loc = pgm_lastIndexOf('/', the_path); // index of last '/'
+  if (slash_loc < 0)
+    slash_loc = pgm_lastIndexOf('\\', the_path); // or last '\' (windows, ugh)
+
+  int dot_loc = pgm_lastIndexOf('.', the_path); // index of last '.'
+  if (dot_loc < 0)
+    dot_loc = pgm_lastIndexOf(0, the_path); // if no dot, return end of string
+
+  DEBUGLOG("\r\nSketch name: ");
+
+  for (int i = slash_loc + 1; i < dot_loc; i++)
+  {
+    uint8_t b = pgm_read_byte(&the_path[i]);
+    if (b != 0)
+      DEBUGLOG("%c",(char)b);
+    else
+      break;
+  }
+  DEBUGLOG("\r\n");
+
+  DEBUGLOG("Compiled on: ");
+  DEBUGLOG(__DATE__);
+  DEBUGLOG(" at ");
+  DEBUGLOG(__TIME__);
+  DEBUGLOG("\r\n\r\n");
+}
+
+bool save_system_info()
+{
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+
+  // const char* pathtofile = PSTR(pgm_filesystemoverview);
+
+  File file;
+  if (!SPIFFS.exists(FPSTR(pgm_systeminfofile)))
+  {
+    file = SPIFFS.open(FPSTR(pgm_systeminfofile), "w");
+    if (!file)
+    {
+      DEBUGLOG("Failed to open config file for writing\r\n");
+      file.close();
+      return false;
+    }
+    //create blank json file
+    DEBUGLOG("Creating user config file for writing\r\n");
+    file.print("{}");
+    file.close();
+  }
+  //get existing json file
+  file = SPIFFS.open(FPSTR(pgm_systeminfofile), "w");
+  if (!file)
+  {
+    DEBUGLOG("Failed to open config file");
+    return false;
+  }
+
+  const char *the_path = PSTR(__FILE__);
+  // const char* _compiletime = PSTR(__TIME__);
+
+  int slash_loc = pgm_lastIndexOf('/', the_path); // index of last '/'
+  if (slash_loc < 0)
+    slash_loc = pgm_lastIndexOf('\\', the_path); // or last '\' (windows, ugh)
+
+  int dot_loc = pgm_lastIndexOf('.', the_path); // index of last '.'
+  if (dot_loc < 0)
+    dot_loc = pgm_lastIndexOf(0, the_path); // if no dot, return end of string
+
+  int lenPath = strlen(the_path);
+  int lenFileName = (lenPath - (slash_loc + 1));
+
+  char fileName[lenFileName + 1];
+  //Serial.println(lenFileName);
+  //Serial.println(sizeof(fileName));
+
+  int j = 0;
+  for (int i = slash_loc + 1; i < lenPath; i++)
+  {
+    uint8_t b = pgm_read_byte(&the_path[i]);
+    if (b != 0)
+    {
+      fileName[j] = (char)b;
+      //Serial.print(fileName[j]);
+      j++;
+      if (j >= lenFileName)
+      {
+        break;
+      }
+    }
+    else
+    {
+      break;
+    }
+  }
+  //Serial.println();
+  //Serial.println(j);
+  fileName[lenFileName] = '\0';
+
+  //const char* _compiledate = PSTR(__DATE__);
+  int lenCompileDate = strlen_P(PSTR(__DATE__));
+  char compileDate[lenCompileDate + 1];
+  strcpy_P(compileDate, PSTR(__DATE__));
+
+  int lenCompileTime = strlen_P(PSTR(__TIME__));
+  char compileTime[lenCompileTime + 1];
+  strcpy_P(compileTime, PSTR(__TIME__));
+
+  StaticJsonDocument<1024> root;
+
+  SPIFFS.info(fs_info);
+
+  root[FPSTR(pgm_totalbytes)] = fs_info.totalBytes;
+  root[FPSTR(pgm_usedbytes)] = fs_info.usedBytes;
+  root[FPSTR(pgm_blocksize)] = fs_info.blockSize;
+  root[FPSTR(pgm_pagesize)] = fs_info.pageSize;
+  root[FPSTR(pgm_maxopenfiles)] = fs_info.maxOpenFiles;
+  root[FPSTR(pgm_maxpathlength)] = fs_info.maxPathLength;
+
+  root[FPSTR(pgm_filename)] = fileName;
+  root[FPSTR(pgm_compiledate)] = compileDate;
+  root[FPSTR(pgm_compiletime)] = compileTime;
+  // root[FPSTR(pgm_lastboot)] = getLastBootStr();
+  root[FPSTR(pgm_chipid)] = ESP.getChipId();
+  root[FPSTR(pgm_cpufreq)] = ESP.getCpuFreqMHz();
+  root[FPSTR(pgm_sketchsize)] = ESP.getSketchSize();
+  root[FPSTR(pgm_freesketchspace)] = ESP.getFreeSketchSpace();
+  root[FPSTR(pgm_flashchipid)] = ESP.getFlashChipId();
+  root[FPSTR(pgm_flashchipmode)] = ESP.getFlashChipMode();
+  root[FPSTR(pgm_flashchipsize)] = ESP.getFlashChipSize();
+  root[FPSTR(pgm_flashchiprealsize)] = ESP.getFlashChipRealSize();
+  root[FPSTR(pgm_flashchipspeed)] = ESP.getFlashChipSpeed();
+  root[FPSTR(pgm_cyclecount)] = ESP.getCycleCount();
+  root[FPSTR(pgm_corever)] = ESP.getFullVersion();
+  root[FPSTR(pgm_sdkver)] = ESP.getSdkVersion();
+  root[FPSTR(pgm_bootmode)] = ESP.getBootMode();
+  root[FPSTR(pgm_bootversion)] = ESP.getBootVersion();
+  root[FPSTR(pgm_resetreason)] = ESP.getResetReason();
+
+  serializeJsonPretty(root, file);
+  file.flush();
+  file.close();
+  return true;
+}
+
 void AsyncFSWebServer::start(FS *fs)
 {
+  // -------------------------------------------------------------------
+  // Mount File system
+  // -------------------------------------------------------------------
+  DEBUGLOG("Mounting FS...\r\n");
+
+  if (!SPIFFS.begin())
+  // if (false)
+  {
+    DEBUGLOG("Failed to mount file system\r\n");
+    return;
+  }
+  else
+  {
+    // ftpSrv.begin("esp8266","esp8266");
+  }
+
   _fs = fs;
+
+  if (!_fs) // If SPIFFS is not started
+    _fs->begin();
+#ifndef RELEASE
+  { // List files
+    Dir dir = _fs->openDir("/");
+    while (dir.next())
+    {
+      String fileName = dir.fileName();
+      size_t fileSize = dir.fileSize();
+
+      DEBUGLOG("FS File: %s, size: %s\r\n", fileName.c_str(), formatBytes(fileSize).c_str());
+    }
+    DEBUGLOG("\n");
+  }
+#endif // RELEASE
+
+  display_srcfile_details();
+
+  save_system_info();
 
   // NTP client setup
   if (CONNECTION_LED >= 0)
@@ -696,22 +885,6 @@ void AsyncFSWebServer::start(FS *fs)
   {
     digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
   }
-
-  if (!_fs) // If SPIFFS is not started
-    _fs->begin();
-#ifndef RELEASE
-  { // List files
-    Dir dir = _fs->openDir("/");
-    while (dir.next())
-    {
-      String fileName = dir.fileName();
-      size_t fileSize = dir.fileSize();
-
-      DEBUGLOG("FS File: %s, size: %s\r\n", fileName.c_str(), formatBytes(fileSize).c_str());
-    }
-    DEBUGLOG("\n");
-  }
-#endif // RELEASE
 
   //Set the host name
   char bufPrefix[] = "ENERGYMETER_";
@@ -810,7 +983,7 @@ void AsyncFSWebServer::start(FS *fs)
 
   ConfigureOTA(_httpAuth.wwwPassword.c_str());
 
-  dnsServer.start(53, "*", WiFi.softAPIP());
+  // dnsServer.start(53, "*", WiFi.softAPIP());
 
   DEBUGLOG("Starting mDNS responder...\r\n");
   // if (!MDNS.begin(_config.hostname))
@@ -826,118 +999,6 @@ void AsyncFSWebServer::start(FS *fs)
 
   ArduinoOTA.setHostname(_config.hostname);
   ArduinoOTA.begin();
-
-  NBNS.begin(_config.hostname);
-
-  if (1)
-  {
-    DEBUGLOG("Starting SSDP...\r\n");
-    SSDP.setSchemaURL("description.xml");
-    SSDP.setHTTPPort(80);
-    SSDP.setDeviceType("upnp:rootdevice");
-    // SSDP.setModelName(ssdp_modelName);
-    // SSDP.setModelNumber(ssdp_modelNumber);
-
-    // SSDP.setSchemaURL(FPSTR(pgm_descriptionxml));
-    // SSDP.setHTTPPort(80);
-    // SSDP.setDeviceType(FPSTR(pgm_upnprootdevice));
-    //  SSDP.setModelName(_config.deviceName.c_str());
-    //  SSDP.setModelNumber(FPSTR(modelNumber));
-    SSDP.begin();
-
-    AsyncFSWebServer::on("/description.xml", HTTP_GET, [](AsyncWebServerRequest *request) {
-      DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
-
-      File file = SPIFFS.open(FPSTR(pgm_descriptionxmlfile), "r");
-      if (!file)
-      {
-        PRINT("Failed to open %s file\r\n", file.name());
-        file.close();
-        return;
-      }
-
-      size_t size = file.size();
-      DEBUGLOG("%s file size: %d bytes\r\n", file.name(), size);
-
-      // size_t allocatedSize = 1024;
-      // if (size > allocatedSize)
-      // {
-      //   PRINT("WARNING, %s file size %d bytes is larger than allocatedSize %d bytes. Exiting...\r\n", file.name(), size, allocatedSize);
-      //   file.close();
-      //   return;
-      // }
-
-      // Allocate a buffer to store contents of the file
-      char buf[size + 1];
-
-      //copy file to buffer
-      file.readBytes(buf, size);
-
-      //add termination character at the end
-      buf[size] = '\0';
-
-      //close the file, save your memory, keep healthy :-)
-      file.close();
-
-      // DEBUGLOG("%s\r\n", buf);
-
-      size_t lenBuf = size;
-      DEBUGLOG("Template size: %d bytes\r\n", lenBuf);
-
-      //convert IP address to char array
-      size_t len = strlen(WiFi.localIP().toString().c_str());
-      char URLBase[len + 1];
-      strlcpy(URLBase, WiFi.localIP().toString().c_str(), sizeof(URLBase));
-
-      lenBuf = lenBuf + strlen(URLBase);
-
-      // const char *friendlyName = WiFi.hostname().toString().c_str();
-      len = strlen(WiFi.hostname().c_str());
-      char friendlyName[len + 1];
-      strlcpy(friendlyName, WiFi.hostname().c_str(), sizeof(friendlyName));
-
-      lenBuf = lenBuf + strlen(friendlyName);
-
-      char presentationURL[] = "/";
-
-      lenBuf = lenBuf + strlen(presentationURL);
-
-      uint32_t serialNumber = ESP.getChipId();
-
-      lenBuf = lenBuf + strlen(friendlyName);
-
-      char modelName[] = "ESP8266EX";
-
-      lenBuf = lenBuf + strlen(modelName);
-      const char *modelNumber = friendlyName;
-
-      lenBuf = lenBuf + strlen(modelNumber);
-
-      lenBuf = lenBuf + 6;
-      DEBUGLOG("Allocated size: %d bytes\r\n", lenBuf);
-
-      StreamString output;
-
-      if (output.reserve(lenBuf))
-      {
-        output.printf(buf,
-                      URLBase,
-                      friendlyName,
-                      presentationURL,
-                      serialNumber,
-                      modelName,
-                      modelNumber, //modelNumber
-                      (uint8_t)((serialNumber >> 16) & 0xff),
-                      (uint8_t)((serialNumber >> 8) & 0xff),
-                      (uint8_t)serialNumber & 0xff);
-        request->send(200, "text/xml", output);
-      }
-      else
-      {
-        request->send(500);
-      }
-    });
-  }
 
   ESPHTTPServer.serverInit(); // Configure and start Web server
 
@@ -1041,7 +1102,6 @@ void AsyncFSWebServer::loop()
   ws.cleanupClients();
   dnsServer.processNextRequest();
   MDNS.update();
-
 }
 
 void AsyncFSWebServer::configureWifiAP()
@@ -1155,7 +1215,7 @@ void AsyncFSWebServer::onWiFiDisconnected(WiFiEventStationModeDisconnected data)
 
 void AsyncFSWebServer::onWifiGotIP(WiFiEventStationModeGotIP data)
 {
-  // wifiGotIpFlag = true;
+  wifiGotIpFlag = true;
   WiFi.setAutoReconnect(true);
 
   //Serial.printf_P(PSTR("\r\nWifi Got IP: %s\r\n"), data.ip.toString().c_str ());
@@ -1669,15 +1729,15 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
   File paramXmlFile = SPIFFS.open(PARAMETER_XML_FILE, "r");
   if (!paramXmlFile)
   {
-    PRINT("Failed to open config file\r\n");
+    DEBUGLOG("Failed to open config file\r\n");
     return;
   }
 
   size_t size = paramXmlFile.size();
-  PRINT("PARAMETER_XML_FILE file size: %d bytes\r\n", size);
+  DEBUGLOG("PARAMETER_XML_FILE file size: %d bytes\r\n", size);
   if (size > 1024)
   {
-    PRINT("PARAMETER_XML_FILE file size is too large\r\n");
+    DEBUGLOG("PARAMETER_XML_FILE file size is too large\r\n");
     return;
   }
 
@@ -1834,7 +1894,7 @@ void AsyncFSWebServer::restart_esp(AsyncWebServerRequest *request)
 {
   request->send_P(200, PSTR("text/html"), Page_Restart);
   DEBUGLOG("%s\r\n", __FUNCTION__);
-  mqttClient.disconnect();
+  // mqttClient.disconnect();
   evs.close();
   ws.closeAll();
   _fs->end(); // SPIFFS.end();
@@ -1920,7 +1980,7 @@ bool AsyncFSWebServer::saveHTTPAuth()
 #ifndef RELEASE
   String temp;
   serializeJsonPretty(json, temp);
-  Serial.println(temp);
+  DEBUGLOG("%s\r\n", temp);
 #endif // RELEASE
 
   serializeJson(json, configFile);
@@ -1990,14 +2050,14 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
   { //UPLOAD_FILE_START
     SPIFFS.end();
     Update.runAsync(true);
-    PRINT("Update start: %s\r\n", filename.c_str());
-    uint32_t maxSketchSpace = ESP.getSketchSize();
-    PRINT("Max free scketch space: %u\r\n", maxSketchSpace);
-    PRINT("New scketch size: %u\r\n", _updateSize);
+    DEBUGLOG("Update start: %s\r\n", filename.c_str());
+    // uint32_t maxSketchSpace = ESP.getSketchSize();
+    DEBUGLOG("Max free scketch space: %u\r\n", ESP.getSketchSize());
+    DEBUGLOG("New scketch size: %u\r\n", _updateSize);
     if (_browserMD5 != NULL && _browserMD5 != "")
     {
       Update.setMD5(_browserMD5.c_str());
-      PRINT("Hash from client: %s\r\n", _browserMD5.c_str());
+      DEBUGLOG("Hash from client: %s\r\n", _browserMD5.c_str());
     }
     if (!Update.begin(_updateSize))
     { //start with max available size
@@ -2007,28 +2067,28 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
 
   // Get upload file, continue if not start
   totalSize += len;
-  PRINT(".");
+  DEBUGLOG(".");
   size_t written = Update.write(data, len);
   if (written != len)
   {
-    PRINT("len = %d written = %u totalSize = %li\r\n", len, written, totalSize);
+    DEBUGLOG("len = %d written = %u totalSize = %li\r\n", len, written, totalSize);
     //Update.printError(DBG_OUTPUT_PORT);
     //return;
   }
   if (final)
   { // UPLOAD_FILE_END
     String updateHash;
-    PRINT("Applying update...\r\n");
+    DEBUGLOG("Applying update...\r\n");
     if (Update.end(true))
     { //true to set the size to the current progress
       updateHash = Update.md5String();
-      PRINT("Upload finished. Calculated MD5: %s\r\n", updateHash.c_str());
-      PRINT("Update Success: %u\r\nRebooting...\r\n", request->contentLength());
+      DEBUGLOG("Upload finished. Calculated MD5: %s\r\n", updateHash.c_str());
+      DEBUGLOG("Update Success: %u\r\nRebooting...\r\n", request->contentLength());
     }
     else
     {
       updateHash = Update.md5String();
-      PRINT("Upload failed. Calculated MD5: %s\r\n", updateHash.c_str());
+      DEBUGLOG("Upload failed. Calculated MD5: %s\r\n", updateHash.c_str());
       Update.printError(DEBUGPORT);
     }
   }
@@ -2043,15 +2103,15 @@ void AsyncFSWebServer::send_ssdp_xml_page(AsyncWebServerRequest *request)
   File configFile = SPIFFS.open(DESCRIPTION_XML_FILE, "r");
   if (!configFile)
   {
-    PRINT("Failed to open config file\r\n");
+    DEBUGLOG("Failed to open config file\r\n");
     return;
   }
 
   size_t size = configFile.size();
-  PRINT("SSDP_XML_FILE file size: %d bytes\r\n", size);
+  DEBUGLOG("SSDP_XML_FILE file size: %d bytes\r\n", size);
   if (size > 1024)
   {
-    PRINT("SSDP_XML_FILE file size maybe too large\r\n");
+    DEBUGLOG("SSDP_XML_FILE file size maybe too large\r\n");
     return;
   }
 
@@ -2067,7 +2127,7 @@ void AsyncFSWebServer::send_ssdp_xml_page(AsyncWebServerRequest *request)
   //close the file, save your memory, keep healthy :-)
   configFile.close();
 
-  PRINT("%s\r\n", buf);
+  DEBUGLOG("%s\r\n", buf);
 
   StreamString output;
 
@@ -2532,7 +2592,7 @@ bool AsyncFSWebServer::checkAuth(AsyncWebServerRequest *request)
 
 void AsyncFSWebServer::handleRst(AsyncWebServerRequest *request)
 {
-  config_reset();
+  // config_reset();
   // server.send(200, "text/html", "1");
   request->send(200, "text/html", "1");
   WiFi.disconnect();
@@ -2552,16 +2612,18 @@ void AsyncFSWebServer::handleSaveNetwork(AsyncWebServerRequest *request)
   //decodeURI(qsid);
   //decodeURI(qpass);
 
-  if (qsid != 0)
-  {
-    config_save_wifi(qsid, qpass);
+  request->send(200, PSTR("text/plain"), PSTR("saved"));
 
-    request->send(200, PSTR("text/plain"), PSTR("saved"));
-  }
-  else
-  {
-    request->send(400, PSTR("text/plain"), PSTR("No SSID"));
-  }
+  // if (qsid != 0)
+  // {
+  //   config_save_wifi(qsid, qpass);
+
+  //   request->send(200, PSTR("text/plain"), PSTR("saved"));
+  // }
+  // else
+  // {
+  //   request->send(400, PSTR("text/plain"), PSTR("No SSID"));
+  // }
 
   // String s;
   // String qsid = server.arg("ssid");
