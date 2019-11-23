@@ -7,6 +7,7 @@
 #include "timehelper.h"
 #include "gahe1progmem.h"
 #include "config.h"
+#include <Ticker.h>
 
 #define RELEASE
 
@@ -134,8 +135,19 @@ unsigned long lastTimer16s = 0;
 
 //SoftwareSerial swSer(3, 1, false, 256);
 
+Ticker ticker1000ms;
+
+bool tick1000ms;
+
+void Ticking1000ms()
+{
+  tick1000ms = true;
+}
+
 void modbus_setup()
 {
+
+  ticker1000ms.attach(1, Ticking1000ms);
 
 #if defined(SOFTWARESERIAL)
   swSer.begin(baud);
@@ -181,7 +193,7 @@ void modbus_loop_1()
 {
 
   static bool ledOn = 0;
-  
+
   if (packets[PACKET1].connection == 1 && packets[PACKET2].connection == 1 && packets[PACKET3].connection == 1 && packets[PACKET6].connection == 1)
   {
     lastmillisoldPacketConnection = millis();
@@ -193,13 +205,11 @@ void modbus_loop_1()
     return;
   }
 
-
   static uint32_t numSuccessReq_old = 0;
   uint32_t numSuccessReq = packets[PACKET1].successful_requests;
 
   static uint32_t numFailedReq_old = 0;
   uint32_t numFailedReq = packets[PACKET1].failed_requests;
-
 
   if (numSuccessReq != numSuccessReq_old || numFailedReq != numFailedReq_old)
   {
@@ -238,25 +248,24 @@ void modbus_loop_1()
 
   if (!success)
   {
-    char output[128];
+    // char output[128];
 
-    sprintf_P(output, PSTR("%s,%d,%d,%d,%d"),
-              "failed request",
-              packets[PACKET1].requests,
-              numSuccessReq,
-              packets[PACKET1].failed_requests,
-              millis() / 1000);
+    // sprintf_P(output, PSTR("%s,%d,%d,%d,%d"),
+    //           "failed request",
+    //           packets[PACKET1].requests,
+    //           numSuccessReq,
+    //           packets[PACKET1].failed_requests,
+    //           millis() / 1000);
 
-    if (ws.hasClient(clientID))
-    {
-      ws.textAll(output);
-    }
+    // if (ws.hasClient(clientID))
+    // {
+    //   ws.textAll(output);
+    // }
 
     digitalWrite(2, HIGH);
 
     return;
   }
-
 
   // Check if Watt Threshold has been changed or buffer is empty.
   // If yes, update the last watt Threshold and its buffer value
@@ -271,8 +280,6 @@ void modbus_loop_1()
     currentThreshold_old = currentThreshold;
     dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
   }
-
-
 
   ledOn = !ledOn;
   digitalWrite(2, ledOn);
@@ -337,78 +344,47 @@ void modbus_loop_1()
   temp = (unsigned long)regs[20] << 16 | regs[21];
   Unk2 = *(float *)p;
 
-  if (false)
+  dtostrf(Voltage, 0, 1, bufVoltage);             /* Voltage */
+  dtostrf(Ampere, 0, 2, bufAmpere);               /* Ampere */
+  dtostrf(Watt, 0, 1, bufWatt);                   /* Wattage */
+  dtostrf(Var, 0, 1, bufVar);                     /* Positive Var */
+  dtostrf(Frequency, 0, 1, bufFrequency);         /* Frequency Hz */
+  dtostrf(Pstkwh, 0, 1, bufPstkwh);               /* Positive kWh */
+  dtostrf(Pstkvarh, 0, 1, bufPstkvarh);           /* Positive kVarh */
+  dtostrf(Ngtkvarh, 0, 1, bufNgtkvarh);           /* Negative kVarh */
+  dtostrf(PowerFactor, 0, 1, bufPowerFactor);     /* Power Factor */
+  dtostrf(ApparentPower, 0, 1, bufApparentPower); /* Apparent Power */
+  dtostrf(Unk2, 0, 1, bufUnk2);                   /* Unk2 */
+
+  StaticJsonDocument<512> root;
+  // DynamicJsonDocument root(512);
+
+  root[FPSTR(pgm_voltage)] = bufVoltage;
+  root[FPSTR(pgm_ampere)] = bufAmpere;
+  root[FPSTR(pgm_watt)] = bufWatt;
+  root[FPSTR(pgm_var)] = bufVar;
+  root[FPSTR(pgm_frequency)] = bufFrequency;
+  root[FPSTR(pgm_pstkwh)] = bufPstkwh;
+  root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
+  root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
+  root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
+  root[FPSTR(pgm_apparentpower)] = bufApparentPower;
+  root[FPSTR(pgm_unk2)] = bufUnk2;
+  root["heap"] = ESP.getFreeHeap();
+
+  size_t len = measureJson(root);
+
+  char buf[len + 1];
+  serializeJson(root, buf, sizeof(buf));
+
+  // if (ws.hasClient(clientID))
+  // {
+  //   ws.textAll(buf);
+  // }
+
+  if (mqttClient.connected())
   {
-    char output[256];
-
-    sprintf_P(output, PSTR("%.1f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%d,%d,%d,%d"),
-              Voltage,
-              Ampere,
-              Watt,
-              Var,
-              Frequency,
-              Pstkwh,
-              Pstkvarh,
-              Ngtkvarh,
-              PowerFactor,
-              ApparentPower,
-              Unk2,
-              packets[PACKET1].requests,
-              numSuccessReq,
-              packets[PACKET1].failed_requests,
-              millis() / 1000);
-
-    if (ws.hasClient(clientID))
-    {
-      ws.textAll(output);
-    }
-  }
-
-  if (true)
-  {
-
-    dtostrf(Voltage, 0, 1, bufVoltage);             /* Voltage */
-    dtostrf(Ampere, 0, 2, bufAmpere);               /* Ampere */
-    dtostrf(Watt, 0, 1, bufWatt);                   /* Wattage */
-    dtostrf(Var, 0, 1, bufVar);                     /* Positive Var */
-    dtostrf(Frequency, 0, 1, bufFrequency);         /* Frequency Hz */
-    dtostrf(Pstkwh, 0, 1, bufPstkwh);               /* Positive kWh */
-    dtostrf(Pstkvarh, 0, 1, bufPstkvarh);           /* Positive kVarh */
-    dtostrf(Ngtkvarh, 0, 1, bufNgtkvarh);           /* Negative kVarh */
-    dtostrf(PowerFactor, 0, 1, bufPowerFactor);     /* Power Factor */
-    dtostrf(ApparentPower, 0, 1, bufApparentPower); /* Apparent Power */
-    dtostrf(Unk2, 0, 1, bufUnk2);                   /* Unk2 */
-
-    StaticJsonDocument<512> root;
-    // DynamicJsonDocument root(512);
-
-    root[FPSTR(pgm_voltage)] = bufVoltage;
-    root[FPSTR(pgm_ampere)] = bufAmpere;
-    root[FPSTR(pgm_watt)] = bufWatt;
-    root[FPSTR(pgm_var)] = bufVar;
-    root[FPSTR(pgm_frequency)] = bufFrequency;
-    root[FPSTR(pgm_pstkwh)] = bufPstkwh;
-    root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
-    root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
-    root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
-    root[FPSTR(pgm_apparentpower)] = bufApparentPower;
-    root[FPSTR(pgm_unk2)] = bufUnk2;
-    root["heap"] = ESP.getFreeHeap();
-
-    size_t len = measureJson(root);
-
-    char buf[len + 1];
-    serializeJson(root, buf, sizeof(buf));
-
-    if (ws.hasClient(clientID))
-    {
-      ws.textAll(buf);
-    }
-
-    if (mqttClient.connected())
-    {
-      mqttClient.publish("ESP13579541/meterreading/1s", 2, 0, buf);
-    }
+    mqttClient.publish("ESP13579541/meterreading/1s", 2, 0, buf);
   }
 }
 

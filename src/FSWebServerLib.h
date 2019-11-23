@@ -24,6 +24,7 @@
 #include "Hash.h"
 
 
+
 #define RELEASE  // Comment to enable debug output
 
 // #define DBG_OUTPUT_PORT Serial1
@@ -68,6 +69,7 @@ extern uint32_t clientID;
 
 typedef struct
 {
+  char mode[7] = "AP";
   char hostname[32] = "ESP_XXXX";
   char ssid[32];
   char password[32];
@@ -113,9 +115,10 @@ public:
   void start(FS *fs);
   void loop();
   //AsyncWebSocket _ws = AsyncWebSocket("/ws");
+  strConfig _config; // General and WiFi configuration
 
 protected:
-  strConfig _config; // General and WiFi configuration
+  // strConfig _config; // General and WiFi configuration
   // strConfigTime _configTime;
   strApConfig _apConfig; // Static AP config settings
   strHTTPAuth _httpAuth;
@@ -193,13 +196,15 @@ protected:
   //void send_meter_reading(AsyncWebServerRequest *request);
   //void send_classic_page(AsyncWebServerRequest *request);
   void send_classic_xml_page(AsyncWebServerRequest *request);
-  void send_ssdp_xml_page(AsyncWebServerRequest *request);
+  // void send_ssdp_xml_page(AsyncWebServerRequest *request);
   //void send_test_page(AsyncWebServerRequest *request);
 
   void handleSaveMqtt(AsyncWebServerRequest *request);
   //void handleStatus(AsyncWebServerRequest *request);
   void handleRst(AsyncWebServerRequest *request);
   void handleSaveNetwork(AsyncWebServerRequest *request);
+
+  void sendHeap(uint8_t mode);
 };
 
 extern AsyncFSWebServer ESPHTTPServer;
@@ -207,6 +212,7 @@ void esp_restart();
 
 extern bool sendDateTimeFlag;
 extern bool wifiGotIpFlag;
+extern bool saveConfigTimeFlag;
 
 
 void runAsyncClientEmoncms();
@@ -217,5 +223,6 @@ void runAsyncClientThingspeak();
 //extern char bufXML[1000];
 //extern void handleXML();
 extern String millis2time();
+
 
 #endif // _FSWEBSERVERLIB_h

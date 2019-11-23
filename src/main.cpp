@@ -5,10 +5,11 @@
 
 #include "FSWebServerLib.h"
 #include "timehelper.h"
-#include "config.h"
+// #include "config.h"
 #include "modbus.h"
 #include "mqtt.h"
 // #include "dhtlib.h"
+#include "thingspeakhelper.h"
 
 // #include <ESP8266FtpServer.h>
 
@@ -42,7 +43,7 @@ void setup()
   DEBUGLOG("Starting ESPHTTPServer...\r\n");
   ESPHTTPServer.start(&SPIFFS);
 
-  timeSetup();
+  Timesetup();
 
 // #if defined(SOFTWARESERIAL)
 //   Serial.swap();
@@ -65,6 +66,8 @@ void setup()
 
   modbus_setup();
 
+  Thingspeaksetup();
+
   DEBUGLOG("Setup completed!");
 }
 
@@ -75,45 +78,44 @@ bool state1000ms;
 bool tick500ms;
 // bool tick1000ms;
 
-void pingFault(void) {}
 
 void loop()
 {
-  timeLoop();
+  Timeloop();
 
-  utcTime = now;
+  // utcTime = now;
 
-  static unsigned long prevTimer500ms = 0;
-  // static unsigned long prevTimer1000ms = 0;
+  // static unsigned long prevTimer500ms = 0;
+  // // static unsigned long prevTimer1000ms = 0;
 
-  static time_t prevDisplay;
+  // static time_t prevDisplay;
 
-  if (utcTime != prevDisplay)
-  {
-    unsigned long currMilis = millis();
-    prevTimer500ms = currMilis;
-    // prevTimer1000ms = currMilis;
-    // tick1000ms = true;
-    prevDisplay = utcTime;
-  }
+  // if (utcTime != prevDisplay)
+  // {
+  //   unsigned long currMilis = millis();
+  //   prevTimer500ms = currMilis;
+  //   // prevTimer1000ms = currMilis;
+  //   // tick1000ms = true;
+  //   prevDisplay = utcTime;
+  // }
 
-  if (millis() < prevTimer500ms + 500)
-  {
-    state500ms = true;
-  }
-  else
-  {
-    state500ms = false;
-  }
+  // if (millis() < prevTimer500ms + 500)
+  // {
+  //   state500ms = true;
+  // }
+  // else
+  // {
+  //   state500ms = false;
+  // }
 
-  if (millis() < prevTimer500ms + 1000)
-  {
-    state1000ms = true;
-  }
-  else
-  {
-    state1000ms = false;
-  }
+  // if (millis() < prevTimer500ms + 1000)
+  // {
+  //   state1000ms = true;
+  // }
+  // else
+  // {
+  //   state1000ms = false;
+  // }
 
   //  if (digitalRead(D5) == LOW && oldState == HIGH) {
   //    wifi_restart();
@@ -125,9 +127,9 @@ void loop()
   //    digitalWrite(led, LOW);
   //  }
 
-  if (tick1000ms)
-  {
-  }
+  // if (tick1000ms)
+  // {
+  // }
 
   ESPHTTPServer.loop();
   // ftpSrv.handleFTP();
@@ -140,9 +142,11 @@ void loop()
   // dht_loop();
   mqtt_loop();
 
+  Thingspeakloop();
+
   //wifi_loop();
   //ESP.wdtFeed();
 
-  tick500ms = false;
-  tick1000ms = false;
+  // tick500ms = false;
+  // tick1000ms = false;
 }

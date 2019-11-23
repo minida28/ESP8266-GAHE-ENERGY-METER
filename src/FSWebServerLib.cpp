@@ -2,11 +2,10 @@
 #include <StreamString.h>
 #include <Arduino.h>
 
-#include <Arduino.h>
 //#include "AsyncJson.h"
 #include <ArduinoJson.h>
 #include <SPIFFSEditor.h>
-#include <DNSServer.h>
+// #include <DNSServer.h>
 #include <StreamString.h>
 #include <time.h>
 
@@ -17,7 +16,6 @@
 // #include "sntphelper.h"
 #include <pgmspace.h>
 
-// #include "config.h"
 #include "modbus.h"
 // #include "mqtt.h"
 #include "config.h"
@@ -43,9 +41,11 @@ uint32_t clientID;
 
 FSInfo fs_info;
 
-DNSServer dnsServer;
+// DNSServer dnsServer;
 AsyncWebSocket ws("/ws");
 AsyncEventSource evs("/events");
+
+strConfigTime _configTime;
 
 bool DEBUGVIAWS = true;
 
@@ -56,6 +56,9 @@ bool sendFreeHeapStatusFlag = false;
 bool sendDateTimeFlag = false;
 bool setDateTimeFromGUIFlag = false;
 bool wifiGotIpFlag = false;
+bool saveConfigTimeFlag = false;
+
+int wifiMode = WIFI_AP;
 
 // How to use the async client?
 // https://github.com/me-no-dev/ESPAsyncTCP/issues/18
@@ -484,9 +487,14 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
         os_printf("\r\n");
       }
       if (info->opcode == WS_TEXT)
-        client->text(FPSTR(pgm_got_text_message));
+      {
+        // client->text(FPSTR(pgm_got_text_message));
+      }
+
       else
-        client->binary(FPSTR(pgm_got_binary_message));
+      {
+        // client->binary(FPSTR(pgm_got_binary_message));
+      }
     }
     else
     {
@@ -522,9 +530,13 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
         {
           //os_printf("ws[%s][%u] %s-message end\n", server->url(), client->id(), (info->message_opcode == WS_TEXT)?"text":"binary");
           if (info->message_opcode == WS_TEXT)
-            client->text(FPSTR(pgm_got_text_message));
+          {
+            // client->text(FPSTR(pgm_got_text_message));
+          }
           else
-            client->binary(FPSTR(pgm_got_binary_message));
+          {
+            // client->binary(FPSTR(pgm_got_binary_message));
+          }
         }
       }
     }
@@ -696,7 +708,7 @@ void display_srcfile_details(void)
   {
     uint8_t b = pgm_read_byte(&the_path[i]);
     if (b != 0)
-      DEBUGLOG("%c",(char)b);
+      DEBUGLOG("%c", (char)b);
     else
       break;
   }
@@ -888,8 +900,8 @@ void AsyncFSWebServer::start(FS *fs)
 
   //Set the host name
   char bufPrefix[] = "ENERGYMETER_";
-  char bufChipId[11];
-  itoa(ESP.getChipId(), bufChipId, 10);
+  char bufChipId[7];
+  snprintf(bufChipId, sizeof(bufChipId) / sizeof(bufChipId[0]), "%06X", ESP.getChipId());
 
   //char bufHostName[32];
   strlcpy(_config.hostname, bufPrefix, sizeof(_config.hostname) / sizeof(_config.hostname[0]));
@@ -901,20 +913,15 @@ void AsyncFSWebServer::start(FS *fs)
     // _configAP.APenable = true;
     _apConfig.APenable = true;
   }
+
   if (!load_config_time())
   {
     save_config_time();
-    _apConfig.APenable = true;
+    // _apConfig.APenable = true;
   }
 
   loadHTTPAuth();
 
-  //WIFI INIT
-  if (_configTime.syncinterval > 0)
-  { // Enable NTP sync
-    // NTP.begin(_configTime.ntpserver_0, TimezoneFloat(), _configTime.dst);
-    // NTP.setInterval(15, _configTime.syncinterval * 60);
-  }
   // Register wifi Event to control connection LED
   onStationModeConnectedHandler = WiFi.onStationModeConnected([this](WiFiEventStationModeConnected data) {
     this->onWiFiConnected(data);
@@ -943,32 +950,50 @@ void AsyncFSWebServer::start(FS *fs)
   WiFi.setAutoConnect(true);
   WiFi.setAutoReconnect(true);
 
-  //WiFi.mode(WIFI_OFF);
-  if (_apConfig.APenable)
-  {
-    WiFi.mode(WIFI_OFF);
-    // configureWifiAP(); // Set AP mode if AP button was pressed
-    //WiFi.mode(WIFI_AP);
-    WiFi.softAP(_config.hostname, NULL);
-    //WiFi.softAP("GAHE1", NULL);
-    WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
-  }
+  // Set wifi mode
+
+  if (strcmp(_config.mode, "STA") == 0)
+    wifiMode = WIFI_STA;
+  else if (strcmp(_config.mode, "AP_STA") == 0)
+    wifiMode = WIFI_AP_STA;
   else
+    wifiMode = WIFI_AP;
+
+  if (wifiMode == WIFI_AP)
   {
-    DEBUGLOG("Starting wifi in WIFI_STA mode.\r\n");
+    DEBUGLOG("Start Wifi in AP mode.\r\n\r\n");
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(_config.hostname, NULL);
+  }
+  else if (wifiMode == WIFI_STA)
+  {
+    DEBUGLOG("Start Wifi in STA mode.\r\n\r\n");
+
+    // WiFi.onEvent(onWifiGotIP, WiFiEvent_t::SYSTEM_EVENT_STA_GOT_IP);
+    // WiFi.onEvent(onWifiGotIP, WiFiEvent_t::SYSTEM_EVENT_STA_GOT_IP);
 
     WiFi.mode(WIFI_STA);
-
-    if (WiFi.getAutoReconnect())
+    WiFi.begin(_config.ssid, _config.password);
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
     {
-      if (WiFi.waitForConnectResult(10000) == -1) // hit timeout
-      {
-        DEBUGLOG("Wifi connect timeout. Re-starting connection...\r\n");
-        WiFi.mode(WIFI_OFF);
-        WiFi.hostname(_config.hostname);
-        WiFi.begin(_config.ssid, _config.password);
-        WiFi.waitForConnectResult();
-      }
+      DEBUGLOG("STA: Failed!\r\n\r\n");
+      WiFi.disconnect(false);
+      delay(1000);
+      WiFi.begin(_config.ssid, _config.password);
+    }
+  }
+  else if (wifiMode == WIFI_AP_STA)
+  {
+    DEBUGLOG("Start Wifi in AP_STA mode.\r\n\r\n");
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.softAP(_config.hostname, NULL);
+    WiFi.begin(_config.ssid, _config.password);
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+    {
+      DEBUGLOG("STA: Failed!\r\n\r\n");
+      WiFi.disconnect(false);
+      delay(1000);
+      WiFi.begin(_config.ssid, _config.password);
     }
   }
 
@@ -994,7 +1019,7 @@ void AsyncFSWebServer::start(FS *fs)
   else
   {
     DEBUGLOG("mDNS responder started\r\n");
-    // MDNS.addService("http", "tcp", 80);
+    MDNS.addService("http", "tcp", 80);
   }
 
   ArduinoOTA.setHostname(_config.hostname);
@@ -1096,12 +1121,61 @@ bool AsyncFSWebServer::loadHTTPAuth()
   return true;
 }
 
+void AsyncFSWebServer::sendHeap(uint8_t mode)
+{
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+
+  ESP.getHeapStats();
+
+  StaticJsonDocument<256> root;
+  // root["heapsize"] = heapsize;
+  root["freeheap"] = ESP.getFreeHeap();
+  root["maxfreeblocksize"] = ESP.getMaxFreeBlockSize();
+  root["heapfragmentation"] = ESP.getHeapFragmentation();  // in %
+
+  size_t len = measureJson(root);
+  char buf[len + 1];
+  serializeJson(root, buf, len + 1);
+
+  if (mode == 0)
+  {
+    //
+  }
+  else if (mode == 1)
+  {
+    // events.send(buf, "heap");
+  }
+  else if (mode == 2)
+  {
+    if (ws.count())
+    {
+      ws.textAll(buf);
+    }
+    else
+    {
+      DEBUGLOG("wsClient is no longer available.\r\n");
+    }
+  }
+}
+
 void AsyncFSWebServer::loop()
 {
   ArduinoOTA.handle();
   ws.cleanupClients();
-  dnsServer.processNextRequest();
+  // dnsServer.processNextRequest();
   MDNS.update();
+
+  if (saveConfigTimeFlag)
+  {
+    saveConfigTimeFlag = false;
+    save_config_time();
+  }
+
+  if (sendFreeHeapStatusFlag)
+  {
+    sendFreeHeapStatusFlag = false;
+    sendHeap(2);
+  }
 }
 
 void AsyncFSWebServer::configureWifiAP()
@@ -1319,7 +1393,8 @@ bool AsyncFSWebServer::load_config_network()
   //close the file, save your memory, keep healthy :-)
   file.close();
 
-  StaticJsonDocument<512> root;
+  StaticJsonDocument<1024> root;
+
   auto error = deserializeJson(root, buf);
 
   if (error)
@@ -1333,6 +1408,7 @@ bool AsyncFSWebServer::load_config_network()
   serializeJsonPretty(root, Serial);
 #endif
 
+  strlcpy(_config.mode, root[FPSTR(pgm_mode)], sizeof(_config.mode));
   // strlcpy(_config.hostname, root[FPSTR(pgm_hostname)], sizeof(_config.hostname)/sizeof(_config.hostname[0]));
   strlcpy(_config.ssid, root[FPSTR(pgm_ssid)], sizeof(_config.ssid) / sizeof(_config.ssid[0]));
   strlcpy(_config.password, root[FPSTR(pgm_password)], sizeof(_config.password) / sizeof(_config.password[0]));
@@ -1346,60 +1422,27 @@ bool AsyncFSWebServer::load_config_network()
   return true;
 }
 
-//*************************
-// LOAD CONFIG TIME
-//*************************
-bool AsyncFSWebServer::load_config_time()
+void AsyncFSWebServer::send_config_network(AsyncWebServerRequest *request)
 {
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
-  File file = _fs->open(FPSTR(pgm_configfiletime), "r");
-  if (!file)
-  {
-    DEBUGLOG("Failed to open config file\n");
-    file.close();
-    return false;
-  }
-
-  size_t size = file.size();
-  DEBUGLOG("JSON file size: %d bytes\r\n", size);
-
-  // Allocate a buffer to store contents of the file
-  char buf[size];
-
-  //copy file to buffer
-  file.readBytes(buf, size);
-
-  //add termination character at the end
-  buf[size] = '\0';
-
-  //close the file, save your memory, keep healthy :-)
-  file.close();
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
 
   StaticJsonDocument<1024> root;
-  auto error = deserializeJson(root, buf);
 
-  if (error)
-  {
-    DEBUGLOG("Failed to parse config NETWORK file\r\n");
-    return false;
-  }
+  root[FPSTR(pgm_mode)] = _config.mode;
+  root[FPSTR(pgm_hostname)] = _config.hostname;
+  root[FPSTR(pgm_ssid)] = _config.ssid;
+  root[FPSTR(pgm_password)] = _config.password;
+  root[FPSTR(pgm_dhcp)] = _config.dhcp;
+  root[FPSTR(pgm_static_ip)] = _config.static_ip;
+  root[FPSTR(pgm_netmask)] = _config.netmask;
+  root[FPSTR(pgm_gateway)] = _config.gateway;
+  root[FPSTR(pgm_dns0)] = _config.dns0;
+  root[FPSTR(pgm_dns1)] = _config.dns1;
 
-#ifndef RELEASE
-  // root.prettyPrintTo(DEBUGPORT);
-  serializeJsonPretty(root, DEBUGPORT);
-#endif
-
-  // _configTime.timezone = root[FPSTR(pgm_timezone)];
-  _configTime.dst = root[FPSTR(pgm_dst)];
-  _configTime.enablertc = root[FPSTR(pgm_enablertc)];
-  _configTime.syncinterval = root[FPSTR(pgm_syncinterval)];
-  _configTime.enablentp = root[FPSTR(pgm_enablentp)];
-  strlcpy(_configTime.ntpserver_0, root[FPSTR(pgm_ntpserver_0)], sizeof(_configTime.ntpserver_0) / sizeof(_configTime.ntpserver_0[0]));
-  strlcpy(_configTime.ntpserver_1, root[FPSTR(pgm_ntpserver_1)], sizeof(_configTime.ntpserver_1) / sizeof(_configTime.ntpserver_1[0]));
-  strlcpy(_configTime.ntpserver_2, root[FPSTR(pgm_ntpserver_2)], sizeof(_configTime.ntpserver_2) / sizeof(_configTime.ntpserver_2[0]));
-
-  return true;
+  serializeJsonPretty(root, *response);
+  request->send(response);
 }
 
 //*************************
@@ -1409,8 +1452,9 @@ bool AsyncFSWebServer::save_config_network()
 {
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
-  DynamicJsonDocument json(1024);
+  StaticJsonDocument<1024> json;
 
+  json[FPSTR(pgm_mode)] = _config.mode;
   // json[FPSTR(pgm_hostname)] = _config.hostname;
   json[FPSTR(pgm_ssid)] = _config.ssid;
   json[FPSTR(pgm_password)] = _config.password;
@@ -1437,63 +1481,6 @@ bool AsyncFSWebServer::save_config_network()
   file.flush();
   file.close();
   return true;
-}
-
-//*************************
-// SAVE CONFIG TIME
-//*************************
-bool AsyncFSWebServer::save_config_time()
-{
-  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
-
-  DynamicJsonDocument json(1024);
-
-  json[FPSTR(pgm_timezone)] = TimezoneFloat();
-  json[FPSTR(pgm_dst)] = _configTime.dst;
-  json[FPSTR(pgm_enablertc)] = _configTime.enablertc;
-  json[FPSTR(pgm_syncinterval)] = _configTime.syncinterval;
-  json[FPSTR(pgm_enablentp)] = _configTime.enablentp;
-  json[FPSTR(pgm_ntpserver_0)] = _configTime.ntpserver_0;
-  json[FPSTR(pgm_ntpserver_1)] = _configTime.ntpserver_1;
-  json[FPSTR(pgm_ntpserver_2)] = _configTime.ntpserver_2;
-
-  File file = _fs->open(FPSTR(pgm_configfiletime), "w");
-
-  if (!file)
-  {
-    DEBUGLOG("Failed to open config file");
-    return false;
-  }
-
-#ifndef RELEASE
-  serializeJsonPretty(json, DEBUGPORT);
-#endif
-
-  serializeJsonPretty(json, file);
-  file.flush();
-  file.close();
-  return true;
-}
-
-void AsyncFSWebServer::send_config_network(AsyncWebServerRequest *request)
-{
-  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
-
-  AsyncResponseStream *response = request->beginResponseStream("application/json");
-  DynamicJsonDocument root(1024);
-
-  root[FPSTR(pgm_hostname)] = _config.hostname;
-  root[FPSTR(pgm_ssid)] = _config.ssid;
-  root[FPSTR(pgm_password)] = _config.password;
-  root[FPSTR(pgm_dhcp)] = _config.dhcp;
-  root[FPSTR(pgm_static_ip)] = _config.static_ip;
-  root[FPSTR(pgm_netmask)] = _config.netmask;
-  root[FPSTR(pgm_gateway)] = _config.gateway;
-  root[FPSTR(pgm_dns0)] = _config.dns0;
-  root[FPSTR(pgm_dns1)] = _config.dns1;
-
-  serializeJsonPretty(root, *response);
-  request->send(response);
 }
 
 void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *request)
@@ -1565,11 +1552,11 @@ void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *reque
   root[FPSTR(pgm_gateway)] = WiFi.gatewayIP().toString();
   root[FPSTR(pgm_netmask)] = WiFi.subnetMask().toString();
   root[FPSTR(pgm_dns)] = WiFi.dnsIP().toString();
-  root[FPSTR(pgm_lastsync)] = getLastSyncStr();
-  root[FPSTR(pgm_time)] = getTimeStr();
-  root[FPSTR(pgm_date)] = getDateStr();
-  root[FPSTR(pgm_uptime)] = getUptimeStr();
-  root[FPSTR(pgm_lastboot)] = getLastBootStr();
+  // root[FPSTR(pgm_lastsync)] = getLastSyncStr();
+  // root[FPSTR(pgm_time)] = getTimeStr();
+  // root[FPSTR(pgm_date)] = getDateStr();
+  // root[FPSTR(pgm_uptime)] = getUptimeStr();
+  // root[FPSTR(pgm_lastboot)] = getLastBootStr();
 
   serializeJson(root, *response);
 
@@ -1592,7 +1579,7 @@ void AsyncFSWebServer::send_NTP_configuration_values_html(AsyncWebServerRequest 
   AsyncResponseStream *response = request->beginResponseStream("text/json");
   DynamicJsonDocument root(1024);
 
-  root[FPSTR(pgm_timezone)] = TimezoneFloat();
+  // root[FPSTR(pgm_timezone)] = TimezoneFloat();
   root[FPSTR(pgm_dst)] = _configTime.dst;
   root[FPSTR(pgm_enablertc)] = _configTime.enablertc;
   root[FPSTR(pgm_syncinterval)] = _configTime.syncinterval;
@@ -1764,6 +1751,9 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
 
   if (output.reserve(1024))
   {
+    char strLastBoot[22];
+    dtostrf(lastBoot, 0, 0, strLastBoot);
+
     //convert IP address to char array
     size_t len = strlen(WiFi.localIP().toString().c_str());
     char ipAddress[len + 1];
@@ -1785,7 +1775,7 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
     dtostrf(heap, 0, 0, bufHeap);
 
     output.printf(buf,
-                  getUptimeStr(),
+                  strLastBoot,
                   ipAddress,
                   bufVoltage,
                   bufAmpere,
@@ -1812,6 +1802,98 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
   {
     request->send(500);
   }
+}
+
+//*************************
+// SAVE CONFIG TIME
+//*************************
+bool AsyncFSWebServer::save_config_time()
+{
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+
+  DynamicJsonDocument json(1024);
+
+  //   json[FPSTR(pgm_timezone)] = TimezoneFloat();
+  json[FPSTR(pgm_dst)] = _configTime.dst;
+  json[FPSTR(pgm_enablertc)] = _configTime.enablertc;
+  json[FPSTR(pgm_syncinterval)] = _configTime.syncinterval;
+  json[FPSTR(pgm_enablentp)] = _configTime.enablentp;
+  json[FPSTR(pgm_ntpserver_0)] = _configTime.ntpserver_0;
+  json[FPSTR(pgm_ntpserver_1)] = _configTime.ntpserver_1;
+  json[FPSTR(pgm_ntpserver_2)] = _configTime.ntpserver_2;
+
+  File file = SPIFFS.open(FPSTR(pgm_configfiletime), "w");
+
+  if (!file)
+  {
+    DEBUGLOG("Failed to open config file");
+    return false;
+  }
+
+#ifndef RELEASE
+  serializeJsonPretty(json, DEBUGPORT);
+#endif
+
+  serializeJsonPretty(json, file);
+  file.flush();
+  file.close();
+  return true;
+}
+
+//*************************
+// LOAD CONFIG TIME
+//*************************
+bool AsyncFSWebServer::load_config_time()
+{
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+
+  File file = SPIFFS.open(FPSTR(pgm_configfiletime), "r");
+  if (!file)
+  {
+    DEBUGLOG("Failed to open config file\n");
+    file.close();
+    return false;
+  }
+
+  size_t size = file.size();
+  DEBUGLOG("JSON file size: %d bytes\r\n", size);
+
+  // Allocate a buffer to store contents of the file
+  char buf[size];
+
+  //copy file to buffer
+  file.readBytes(buf, size);
+
+  //add termination character at the end
+  buf[size] = '\0';
+
+  //close the file, save your memory, keep healthy :-)
+  file.close();
+
+  StaticJsonDocument<1024> root;
+  auto error = deserializeJson(root, buf);
+
+  if (error)
+  {
+    DEBUGLOG("Failed to parse config NETWORK file\r\n");
+    return false;
+  }
+
+#ifndef RELEASE
+  // root.prettyPrintTo(DEBUGPORT);
+  serializeJsonPretty(root, DEBUGPORT);
+#endif
+
+  // _configTime.timezone = root[FPSTR(pgm_timezone)];
+  _configTime.dst = root[FPSTR(pgm_dst)];
+  _configTime.enablertc = root[FPSTR(pgm_enablertc)];
+  _configTime.syncinterval = root[FPSTR(pgm_syncinterval)];
+  _configTime.enablentp = root[FPSTR(pgm_enablentp)];
+  strlcpy(_configTime.ntpserver_0, root[FPSTR(pgm_ntpserver_0)], sizeof(_configTime.ntpserver_0) / sizeof(_configTime.ntpserver_0[0]));
+  strlcpy(_configTime.ntpserver_1, root[FPSTR(pgm_ntpserver_1)], sizeof(_configTime.ntpserver_1) / sizeof(_configTime.ntpserver_1[0]));
+  strlcpy(_configTime.ntpserver_2, root[FPSTR(pgm_ntpserver_2)], sizeof(_configTime.ntpserver_2) / sizeof(_configTime.ntpserver_2[0]));
+
+  return true;
 }
 
 void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *request)
@@ -1877,7 +1959,7 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
 
     request->send(200, "text/plain", "OK");
 
-    save_config_time();
+    saveConfigTimeFlag = true;
 
     // NTP.setTimeZone(_configTime.timezone / 10);
     // NTP.setDayLight(_configTime.dst);
@@ -2096,75 +2178,75 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
   //delay(2);
 }
 
-void AsyncFSWebServer::send_ssdp_xml_page(AsyncWebServerRequest *request)
-{
-  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+// void AsyncFSWebServer::send_ssdp_xml_page(AsyncWebServerRequest *request)
+// {
+//   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
-  File configFile = SPIFFS.open(DESCRIPTION_XML_FILE, "r");
-  if (!configFile)
-  {
-    DEBUGLOG("Failed to open config file\r\n");
-    return;
-  }
+//   File configFile = SPIFFS.open(DESCRIPTION_XML_FILE, "r");
+//   if (!configFile)
+//   {
+//     DEBUGLOG("Failed to open config file\r\n");
+//     return;
+//   }
 
-  size_t size = configFile.size();
-  DEBUGLOG("SSDP_XML_FILE file size: %d bytes\r\n", size);
-  if (size > 1024)
-  {
-    DEBUGLOG("SSDP_XML_FILE file size maybe too large\r\n");
-    return;
-  }
+//   size_t size = configFile.size();
+//   DEBUGLOG("SSDP_XML_FILE file size: %d bytes\r\n", size);
+//   if (size > 1024)
+//   {
+//     DEBUGLOG("SSDP_XML_FILE file size maybe too large\r\n");
+//     return;
+//   }
 
-  // Allocate a buffer to store contents of the file
-  char buf[size];
+//   // Allocate a buffer to store contents of the file
+//   char buf[size];
 
-  //copy file to buffer
-  configFile.readBytes(buf, size);
+//   //copy file to buffer
+//   configFile.readBytes(buf, size);
 
-  //add termination character at the end
-  buf[size] = '\0';
+//   //add termination character at the end
+//   buf[size] = '\0';
 
-  //close the file, save your memory, keep healthy :-)
-  configFile.close();
+//   //close the file, save your memory, keep healthy :-)
+//   configFile.close();
 
-  DEBUGLOG("%s\r\n", buf);
+//   DEBUGLOG("%s\r\n", buf);
 
-  StreamString output;
+//   StreamString output;
 
-  if (output.reserve(1024))
-  {
-    //convert IP address to char array
-    size_t len = strlen(WiFi.localIP().toString().c_str());
-    char URLBase[len + 1];
-    strlcpy(URLBase, WiFi.localIP().toString().c_str(), sizeof(URLBase) / sizeof(URLBase[0]));
+//   if (output.reserve(1024))
+//   {
+//     //convert IP address to char array
+//     size_t len = strlen(WiFi.localIP().toString().c_str());
+//     char URLBase[len + 1];
+//     strlcpy(URLBase, WiFi.localIP().toString().c_str(), sizeof(URLBase) / sizeof(URLBase[0]));
 
-    // const char *friendlyName = WiFi.hostname().toString().c_str();
-    len = strlen(WiFi.hostname().c_str());
-    char friendlyName[len + 1];
-    strlcpy(friendlyName, WiFi.hostname().c_str(), sizeof(friendlyName) / sizeof(friendlyName[0]));
+//     // const char *friendlyName = WiFi.hostname().toString().c_str();
+//     len = strlen(WiFi.hostname().c_str());
+//     char friendlyName[len + 1];
+//     strlcpy(friendlyName, WiFi.hostname().c_str(), sizeof(friendlyName) / sizeof(friendlyName[0]));
 
-    char presentationURL[] = "/";
-    uint32_t serialNumber = ESP.getChipId();
-    char modelName[] = "GHDS100E";
-    const char *modelNumber = friendlyName;
-    //output.printf(ssdpTemplate,
-    output.printf(buf,
-                  URLBase,
-                  friendlyName,
-                  presentationURL,
-                  serialNumber,
-                  modelName,
-                  modelNumber, //modelNumber
-                  (uint8_t)((serialNumber >> 16) & 0xff),
-                  (uint8_t)((serialNumber >> 8) & 0xff),
-                  (uint8_t)serialNumber & 0xff);
-    request->send(200, "text/xml", output);
-  }
-  else
-  {
-    request->send(500);
-  }
-}
+//     char presentationURL[] = "/";
+//     uint32_t serialNumber = ESP.getChipId();
+//     char modelName[] = "GHDS100E";
+//     const char *modelNumber = friendlyName;
+//     //output.printf(ssdpTemplate,
+//     output.printf(buf,
+//                   URLBase,
+//                   friendlyName,
+//                   presentationURL,
+//                   serialNumber,
+//                   modelName,
+//                   modelNumber, //modelNumber
+//                   (uint8_t)((serialNumber >> 16) & 0xff),
+//                   (uint8_t)((serialNumber >> 8) & 0xff),
+//                   (uint8_t)serialNumber & 0xff);
+//     request->send(200, "text/xml", output);
+//   }
+//   else
+//   {
+//     request->send(500);
+//   }
+// }
 
 void AsyncFSWebServer::serverInit()
 {
@@ -2375,11 +2457,11 @@ void AsyncFSWebServer::serverInit()
   });
 #endif // HIDE_CONFIG
 
-  on("/ssdpxml", [this](AsyncWebServerRequest *request) {
-    if (!this->checkAuth(request))
-      return request->requestAuthentication();
-    this->send_ssdp_xml_page(request);
-  });
+  // on("/ssdpxml", [this](AsyncWebServerRequest *request) {
+  //   if (!this->checkAuth(request))
+  //     return request->requestAuthentication();
+  //   this->send_ssdp_xml_page(request);
+  // });
 
   //called when the url is not defined here
   //use it to load content from SPIFFS
@@ -2463,6 +2545,62 @@ void AsyncFSWebServer::serverInit()
     //    if (ws.hasClient(num)) {
     //      ws.text(num, __PRETTY_FUNCTION__);
     //    }
+  });
+
+  on("/status/network", [this](AsyncWebServerRequest *request) {
+    DEBUGLOG("%s\r\n", request->url().c_str());
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    // DynamicJsonDocument root(2048);
+    StaticJsonDocument<1024> root;
+
+    char bufChipId[23];
+    snprintf(bufChipId, sizeof(bufChipId) / sizeof(bufChipId[0]), "%06X", ESP.getChipId());
+    root[FPSTR(pgm_chipid)] = bufChipId;
+
+    root[FPSTR(pgm_hostname)] = WiFi.hostname();
+
+    int wifiStatus = WiFi.status();
+
+    if (wifiStatus <= 6)
+      root[FPSTR(pgm_status)] = FPSTR(wifistatus_P[wifiStatus]);
+    else
+      root[FPSTR(pgm_status)] = FPSTR(WL_NO_SHIELD_Str);
+
+    int wifiMode = WiFi.getMode();
+
+    if (wifiMode <= 3)
+      root[FPSTR(pgm_mode)] = FPSTR(wifimode_P[wifiMode]);
+    else
+      root[FPSTR(pgm_mode)] = FPSTR(MODE_MAX_Str);
+
+    const char *phymodes[] = {"", "B", "G", "N"};
+    root[FPSTR(pgm_phymode)] = phymodes[WiFi.getPhyMode()];
+    root[FPSTR(pgm_channel)] = WiFi.channel();
+    if (strcmp(_config.mode, "STA") == 0)
+      root[FPSTR(pgm_ssid)] = WiFi.SSID();
+    else if (strcmp(_config.mode, "AP") == 0 || strcmp(_config.mode, "AP_STA") == 0)
+      root[FPSTR(pgm_ssid)] = _config.hostname;
+    root[FPSTR(pgm_password)] = WiFi.psk();
+    root[FPSTR(pgm_encryption)] = FPSTR(pgm_NA);
+    root[FPSTR(pgm_isconnected)] = WiFi.isConnected();
+    root[FPSTR(pgm_autoconnect)] = WiFi.getAutoConnect();
+
+    root[FPSTR(pgm_persistent)] = WiFi.getPersistent();
+
+    root[FPSTR(pgm_bssid)] = WiFi.BSSIDstr();
+    root[FPSTR(pgm_rssi)] = WiFi.RSSI();
+    root[FPSTR(pgm_sta_ip)] = WiFi.localIP().toString();
+    root[FPSTR(pgm_sta_mac)] = WiFi.macAddress();
+    root[FPSTR(pgm_ap_ip)] = WiFi.softAPIP().toString();
+    root[FPSTR(pgm_ap_mac)] = WiFi.softAPmacAddress();
+    root[FPSTR(pgm_gateway)] = WiFi.gatewayIP().toString();
+    root[FPSTR(pgm_netmask)] = WiFi.subnetMask().toString();
+    root[FPSTR(pgm_dns0)] = WiFi.dnsIP().toString();
+    root[FPSTR(pgm_dns1)] = WiFi.dnsIP(1).toString();
+
+    serializeJson(root, *response);
+    request->send(response);
   });
 
   addHandler(new SPIFFSEditor());

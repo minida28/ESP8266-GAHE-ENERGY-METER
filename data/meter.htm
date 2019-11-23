@@ -80,9 +80,11 @@
         <li class="pure-menu-item"><a class="pure-menu-link" href="config.html">Wifi Settings</a></li>
         <li class="pure-menu-item"><a class="pure-menu-link" href="info.html">Network Info</a></li>
         <li class="pure-menu-item"><a class="pure-menu-link" href="ntp.html">NTP Settings</a></li>
-        <li class="pure-menu-item"><a class="pure-menu-link" href="system.html">System Settings</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="menu.html">System Settings</a></li>
         <li class="pure-menu-item"><a class="pure-menu-link" href="async.htm">DEBUG</a></li>
         <li class="pure-menu-item"><a class="pure-menu-link" href="edit2.html">EDITOR</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="confignetwork.html">NETWORK</a></li>
+        <li class="pure-menu-item"><a class="pure-menu-link" href="status.html">STATUS</a></li>
       </ul>
     </div>
   </div>
@@ -188,8 +190,8 @@
                       <td></td>
                     </tr>
                     <tr>
-                      <td>Threshold</td>
-                      <td><span id="x_wattthreshold"></span></td>
+                      <td>Current Threshold</td>
+                      <td><span id="x_currentthreshold"></span></td>
                       <td></td>
                     </tr>
                     <tr>
@@ -306,6 +308,7 @@ function handleServerResponse()
   if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
     
     xmlResponse = xmlHttp.responseXML;
+    // console.log(xmlResponse);
     
     insertTableData("meterreading");
 
@@ -336,11 +339,40 @@ function insertTableData(node_name)
     if (x === "watt") watt = y;
     else if (x === "voltage") voltage = y;
     else if (x === "heap") heap = y;
+    else if (x === "runtime")
+      {
+        // var dt = new Date(json.y, json.m, json.d, json.hr, json.min, json.sec);
+        // console.log(dt.toDateString());
+        // console.log(dt.toTimeString());
+        
+        var dt = new Date();
+        
+        var lastBoot = new Date(y * 1000);
+        var uptime = dt - lastBoot;
+        uptime = new Date(uptime);
+        var uptimeStr = Math.floor(uptime/1000/86400) + ' day(s) ' + uptime.getUTCHours() + ':' + pad(uptime.getUTCMinutes(), 2) + ':' + pad(uptime.getUTCSeconds(), 2);
+        
+        
+        // var lastBoot = new Date(json.lastboot * 1000);
+        
+        // var lastSync = new Date(json.lastsyncbyntp * 1000);
+        // var nextSync = new Date(json.nextsync * 1000);
+      }
     
     // construct element id from nodeName
     // then insert to data to table
-    x = "x_" + x;
-    document.getElementById(x).textContent = y;
+    
+    if (x === "runtime")
+    {
+      y = uptimeStr;
+    }
+    
+    var element = document.getElementById("x_" + x);
+    if (element)
+      document.getElementById("x_" + x).textContent = y;
+
+    
+    // console.log(x, y);
   }
 }
             
@@ -575,6 +607,11 @@ function advance()
   setTimeout(function() {
       requestAnimationFrame(advance);
   }, speed);
+}
+
+function pad(num, size) {
+    var s = "0" + num;
+    return s.substr(s.length-size);
 }
 </script>
 

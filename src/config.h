@@ -1,3 +1,6 @@
+#ifndef _MYENERGYCONFIG_H
+#define _MYENERGYCONFIG_H
+
 typedef struct
 {
   // int8_t timezone = _configLocation.timezone;
@@ -18,3 +21,5 @@ typedef enum timeSource
   TIMESOURCE_RTC
 } TIMESOURCE;
 extern TIMESOURCE _timeSource;
+
+#endif

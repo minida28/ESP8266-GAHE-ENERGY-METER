@@ -2,8 +2,6 @@
 #define _MYMODBUS_H
 
 #include "SimpleModbusMaster.h"
-//#include <SoftwareSerial.h>
-// #include "config.h"
 
 // This is the easiest way to create new packets
 // Add as many as you want. TOTAL_NO_OF_PACKETS
