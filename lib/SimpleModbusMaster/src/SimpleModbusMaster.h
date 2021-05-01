@@ -82,7 +82,7 @@
 
 #include "Arduino.h"
 
-//#define SOFTWARESERIAL
+#define SOFTWARESERIAL
 
 #if defined(SOFTWARESERIAL)
 #include "SoftwareSerial.h"

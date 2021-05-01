@@ -17,10 +17,11 @@
 #include <pgmspace.h>
 
 #include "modbus.h"
-// #include "mqtt.h"
+#include "mqtt.h"
 #include "config.h"
+#include "asyncpinghelper.h"
 
-#define RELEASE
+// #define RELEASE
 
 #define DEBUGPORT Serial
 
@@ -45,7 +46,7 @@ FSInfo fs_info;
 AsyncWebSocket ws("/ws");
 AsyncEventSource evs("/events");
 
-strConfigTime _configTime;
+// strConfigTime _configTime;
 
 bool DEBUGVIAWS = true;
 
@@ -549,13 +550,13 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
     {
       sendDateTimeFlag = true;
     }
-    else if (strncmp_P((char *)data, pgm_freeheap, strlen_P(pgm_freeheap)) == 0)
-    {
-      sendFreeHeapStatusFlag = true;
-    }
     else if (strncmp((char *)data, "/status/datetime", strlen("/status/datetime")) == 0)
     {
       sendDateTimeFlag = true;
+    }
+    else if (strncmp_P((char *)data, pgm_freeheap, strlen_P(pgm_freeheap)) == 0)
+    {
+      sendFreeHeapStatusFlag = true;
     }
     else if (data[0] == '{')
     {
@@ -612,6 +613,132 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
       timestampReceivedFromWebGUI = (unsigned long)strtol(token, '\0', 10);
 
       setDateTimeFromGUIFlag = true;
+    }
+  }
+}
+
+//*************************
+// SAVE CONFIG TIME
+//*************************
+bool save_config_time()
+{
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+
+  StaticJsonDocument<512> json;
+
+  json[FPSTR(pgm_dst)] = _configTime.dst;
+  json[FPSTR(pgm_enablentp)] = _configTime.enablentp;
+  json[FPSTR(pgm_ntpserver_0)] = _configTime.ntpserver_0;
+  json[FPSTR(pgm_ntpserver_1)] = _configTime.ntpserver_1;
+  json[FPSTR(pgm_ntpserver_2)] = _configTime.ntpserver_2;
+  json[FPSTR(pgm_enablertc)] = _configTime.enablertc;
+  json[FPSTR(pgm_syncinterval)] = _configTime.syncinterval;
+  json[FPSTR(pgm_lastsync)] = _configTime.lastsync;
+
+  //json["led"] = config.connectionLed;
+
+  //TODO add AP data to html
+  File file = SPIFFS.open(FPSTR(pgm_configfiletime), "w");
+
+#ifndef RELEASEASYNCWS
+  serializeJsonPretty(json, DEBUGPORT);
+  DEBUGLOG("\r\n");
+#endif
+
+  serializeJsonPretty(json, file);
+  file.flush();
+  file.close();
+  return true;
+}
+
+void sendDateTime(uint8_t mode)
+{
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+
+  // DynamicJsonDocument root(2048);
+  StaticJsonDocument<1024> root;
+
+  RtcDateTime dt;
+  dt.InitWithEpoch32Time(localTime);
+
+  root["d"] = dt.Day();
+  root["m"] = dt.Month();
+  root["y"] = dt.Year();
+  root["hr"] = dt.Hour();
+  root["min"] = dt.Minute();
+  root["sec"] = dt.Second();
+  // root["tz"] = TimezoneFloat();
+  root["tzStr"] = _configLocation.timezonestring;
+  root["utc"] = now;
+  root["local"] = localTime;
+
+  root[FPSTR(pgm_date)] = getDateStr(localTime);
+  root[FPSTR(pgm_time)] = getTimeStr(localTime);
+  root[FPSTR(pgm_uptime)] = getUptimeStr();
+  root[FPSTR(pgm_lastboot)] = getLastBootStr();
+  root[FPSTR(pgm_internetstatus)] = FPSTR(internetstatus_P[internet]);
+  root[FPSTR(pgm_rtcstatus)] = FPSTR(rtcstatus_P[GetRtcStatus()]);
+
+  if (syncByRtcFlag)
+  {
+    root[FPSTR(pgm_lastsyncby)] = FPSTR(pgm_RTC);
+  }
+  else if (syncByNtpFlag)
+  {
+    root[FPSTR(pgm_lastsyncby)] = FPSTR(pgm_NTP);
+  }
+  else
+  {
+    root[FPSTR(pgm_lastsyncby)] = FPSTR(pgm_None);
+  }
+
+  root[FPSTR(pgm_nextsync)] = getNextSyncStr();
+
+  if (lastSyncByNtp)
+  {
+    char temp[64];
+    strlcpy(temp, getLastSyncStr(lastSyncByNtp), sizeof(temp) / sizeof(temp[0]));
+    root[FPSTR(pgm_lastsyncbyntp)] = temp;
+  }
+  else
+  {
+    root[FPSTR(pgm_lastsyncbyntp)] = FPSTR(pgm_never);
+  }
+
+  if (lastSyncByRtc)
+  {
+    root[FPSTR(pgm_lastsyncbyrtc)] = getLastSyncStr(lastSyncByRtc);
+  }
+  else
+  {
+    root[FPSTR(pgm_lastsyncbyrtc)] = FPSTR(pgm_never);
+  }
+
+  // root["ping_seq_num_send"] = ping_seq_num_send;
+  // root["ping_seq_num_recv"] = ping_seq_num_recv;
+
+  size_t len = measureJson(root);
+  char buf[len + 1];
+  serializeJson(root, buf, len + 1);
+
+  if (mode == 0)
+  {
+    //
+  }
+  else if (mode == 1)
+  {
+    // events.send(buf);
+    // events.send(buf, "timeDate", millis());
+  }
+  else if (mode == 2)
+  {
+    if (ws.hasClient(clientID))
+    {
+      ws.text(clientID, buf);
+    }
+    else
+    {
+      DEBUGLOG("ClientID %d is no longer available.\r\n", clientID);
     }
   }
 }
@@ -708,7 +835,9 @@ void display_srcfile_details(void)
   {
     uint8_t b = pgm_read_byte(&the_path[i]);
     if (b != 0)
+    {
       DEBUGLOG("%c", (char)b);
+    }
     else
       break;
   }
@@ -877,26 +1006,26 @@ void AsyncFSWebServer::start(FS *fs)
 
   save_system_info();
 
-  // NTP client setup
-  if (CONNECTION_LED >= 0)
-  {
-    pinMode(CONNECTION_LED, OUTPUT); // CONNECTION_LED pin defined as output
-  }
-  if (AP_ENABLE_BUTTON >= 0)
-  {
-    //If this pin is HIGH during startup ESP will run in AP_ONLY mode.
-    //Backdoor to change WiFi settings when configured WiFi is not available.
-    if (analogRead(A0) >= 750)
-    {
-      _apConfig.APenable = true;
-      DEBUGLOG("AP Enable = %d\n", _apConfig.APenable);
-    }
-  }
+  // // NTP client setup
+  // if (CONNECTION_LED >= 0)
+  // {
+  //   pinMode(CONNECTION_LED, OUTPUT); // CONNECTION_LED pin defined as output
+  // }
+  // if (AP_ENABLE_BUTTON >= 0)
+  // {
+  //   //If this pin is HIGH during startup ESP will run in AP_ONLY mode.
+  //   //Backdoor to change WiFi settings when configured WiFi is not available.
+  //   if (analogRead(A0) >= 750)
+  //   {
+  //     _apConfig.APenable = true;
+  //     DEBUGLOG("AP Enable = %d\n", _apConfig.APenable);
+  //   }
+  // }
 
-  if (CONNECTION_LED >= 0)
-  {
-    digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
-  }
+  // if (CONNECTION_LED >= 0)
+  // {
+  //   digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
+  // }
 
   //Set the host name
   char bufPrefix[] = "ENERGYMETER_";
@@ -998,7 +1127,7 @@ void AsyncFSWebServer::start(FS *fs)
   }
 
   DEBUGLOG("Open http://");
-  DEBUGLOG("%s\r\n", _config.hostname);
+  DEBUGLOG("%s", _config.hostname);
   DEBUGLOG(".local/edit to see the file browser\r\n");
   DEBUGLOG("Flash chip size: %u\r\n", ESP.getFlashChipRealSize());
   DEBUGLOG("Scketch size: %u\r\n", ESP.getSketchSize());
@@ -1085,8 +1214,8 @@ bool AsyncFSWebServer::loadHTTPAuth()
     String temp;
     // json.prettyPrintTo(temp);
     serializeJsonPretty(json, temp);
-    PRINT("%s\r\n", temp.c_str());
-    PRINT("Failed to parse secret file\r\n");
+    DEBUGLOG("%s\r\n", temp.c_str());
+    DEBUGLOG("Failed to parse secret file\r\n");
 #endif // RELEASE
     _httpAuth.auth = false;
     _httpAuth.wwwUsername = "";
@@ -1096,7 +1225,7 @@ bool AsyncFSWebServer::loadHTTPAuth()
 #ifndef RELEASE
   // json.prettyPrintTo(DEBUGPORT);
   serializeJsonPretty(json, DEBUGPORT);
-  PRINT("\r\n");
+  DEBUGLOG("\r\n");
 #endif // RELEASE
 
   _httpAuth.auth = json[FPSTR(pgm_auth)];
@@ -1131,7 +1260,7 @@ void AsyncFSWebServer::sendHeap(uint8_t mode)
   // root["heapsize"] = heapsize;
   root["freeheap"] = ESP.getFreeHeap();
   root["maxfreeblocksize"] = ESP.getMaxFreeBlockSize();
-  root["heapfragmentation"] = ESP.getHeapFragmentation();  // in %
+  root["heapfragmentation"] = ESP.getHeapFragmentation(); // in %
 
   size_t len = measureJson(root);
   char buf[len + 1];
@@ -1175,6 +1304,12 @@ void AsyncFSWebServer::loop()
   {
     sendFreeHeapStatusFlag = false;
     sendHeap(2);
+  }
+
+  if (sendDateTimeFlag)
+  {
+    sendDateTimeFlag = false;
+    sendDateTime(2);
   }
 }
 
@@ -1563,6 +1698,31 @@ void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *reque
   request->send(response);
 }
 
+void AsyncFSWebServer::send_config_mqtt(AsyncWebServerRequest *request)
+{
+  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+
+  AsyncResponseStream *response = request->beginResponseStream("application/json");
+  // DynamicJsonDocument root(2048);
+  StaticJsonDocument<1024> root;
+
+  root[FPSTR(pgm_mqtt_enabled)] = configMqtt.enabled;
+  root[FPSTR(pgm_mqtt_server)] = configMqtt.server;
+  root[FPSTR(pgm_mqtt_port)] = configMqtt.port;
+  root[FPSTR(pgm_mqtt_user)] = configMqtt.user;
+  root[FPSTR(pgm_mqtt_pass)] = configMqtt.pass;
+  root[FPSTR(pgm_mqtt_clientid)] = _config.hostname;
+  root[FPSTR(pgm_mqtt_keepalive)] = configMqtt.keepalive;
+  root[FPSTR(pgm_mqtt_cleansession)] = configMqtt.cleansession;
+  // root[FPSTR(pgm_mqtt_lwttopicprefix)] = configMqtt.lwttopicprefix;
+  root[FPSTR(pgm_mqtt_lwtqos)] = configMqtt.lwtqos;
+  root[FPSTR(pgm_mqtt_lwtretain)] = configMqtt.lwtretain;
+  root[FPSTR(pgm_mqtt_lwtpayload)] = configMqtt.lwtpayload;
+
+  serializeJson(root, *response);
+  request->send(response);
+}
+
 String AsyncFSWebServer::getMacAddress()
 {
   uint8_t mac[6];
@@ -1745,55 +1905,55 @@ void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
   //close the file, save your memory, keep healthy :-)
   paramXmlFile.close();
 
-  //PRINT("%s\r\n", buf);
+  //DEBUGLOG("%s\r\n", buf);
 
   StreamString output;
 
   if (output.reserve(1024))
   {
-    char strLastBoot[22];
-    dtostrf(lastBoot, 0, 0, strLastBoot);
+    char strUptime[22];
+    strlcpy(strUptime, getUptimeStr(), sizeof(strUptime) / sizeof(strUptime[0]));
 
     //convert IP address to char array
     size_t len = strlen(WiFi.localIP().toString().c_str());
     char ipAddress[len + 1];
     strlcpy(ipAddress, WiFi.localIP().toString().c_str(), sizeof(ipAddress) / sizeof(ipAddress[0]));
 
-    char bufRequestsPACKET3[10];
-    char bufSuccessful_requestsPACKET3[10];
-    char bufFailed_requestsPACKET3[10];
-    char bufException_errorsPACKET3[10];
-    char bufConnectionPACKET3[10];
+    char bufRequestsPACKET2[10];
+    char bufSuccessful_requestsPACKET2[10];
+    char bufFailed_requestsPACKET2[10];
+    char bufException_errorsPACKET2[10];
+    char bufConnectionPACKET2[10];
 
-    dtostrf(packets[PACKET3].requests, 0, 0, bufRequestsPACKET3);
-    dtostrf(packets[PACKET3].successful_requests, 0, 0, bufSuccessful_requestsPACKET3);
-    dtostrf(packets[PACKET3].failed_requests, 0, 0, bufFailed_requestsPACKET3);
-    dtostrf(packets[PACKET3].exception_errors, 0, 0, bufException_errorsPACKET3);
-    dtostrf(packets[PACKET3].connection, 0, 0, bufConnectionPACKET3);
+    dtostrf(packets[PACKET2].requests, 0, 0, bufRequestsPACKET2);
+    dtostrf(packets[PACKET2].successful_requests, 0, 0, bufSuccessful_requestsPACKET2);
+    dtostrf(packets[PACKET2].failed_requests, 0, 0, bufFailed_requestsPACKET2);
+    dtostrf(packets[PACKET2].exception_errors, 0, 0, bufException_errorsPACKET2);
+    dtostrf(packets[PACKET2].connection, 0, 0, bufConnectionPACKET2);
 
     char bufHeap[10];
     dtostrf(heap, 0, 0, bufHeap);
 
     output.printf(buf,
-                  strLastBoot,
+                  strUptime,
                   ipAddress,
                   bufVoltage,
                   bufAmpere,
                   bufWatt,
-                  bufVar,
-                  bufApparentPower,
-                  bufPowerFactor,
-                  bufFrequency,
+                  // bufVar,
+                  // bufApparentPower,
+                  // bufPowerFactor,
+                  // bufFrequency,
                   bufPstkwh,
-                  bufPstkvarh,
-                  bufNgtkvarh,
-                  bufwattThreshold,
+                  // bufPstkvarh,
+                  // bufNgtkvarh,
+                  // bufwattThreshold,
                   bufCurrentThreshold,
-                  bufRequestsPACKET3,
-                  bufSuccessful_requestsPACKET3,
-                  bufFailed_requestsPACKET3,
-                  bufException_errorsPACKET3,
-                  bufConnectionPACKET3,
+                  bufRequestsPACKET2,
+                  bufSuccessful_requestsPACKET2,
+                  bufFailed_requestsPACKET2,
+                  bufException_errorsPACKET2,
+                  bufConnectionPACKET2,
                   bufHeap);
 
     request->send(200, "text/xml", output);
@@ -1845,37 +2005,37 @@ bool AsyncFSWebServer::save_config_time()
 //*************************
 bool AsyncFSWebServer::load_config_time()
 {
-  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
+  DEBUGLOG("\r\n%s\r\n", __PRETTY_FUNCTION__);
 
-  File file = SPIFFS.open(FPSTR(pgm_configfiletime), "r");
-  if (!file)
+  File fileTime = SPIFFS.open(FPSTR(pgm_configfiletime), "r");
+  if (!fileTime)
   {
     DEBUGLOG("Failed to open config file\n");
-    file.close();
+    fileTime.close();
     return false;
   }
 
-  size_t size = file.size();
+  size_t size = fileTime.size();
   DEBUGLOG("JSON file size: %d bytes\r\n", size);
 
   // Allocate a buffer to store contents of the file
-  char buf[size];
+  char bufTime[size];
 
   //copy file to buffer
-  file.readBytes(buf, size);
+  fileTime.readBytes(bufTime, size);
 
   //add termination character at the end
-  buf[size] = '\0';
+  bufTime[size] = '\0';
 
   //close the file, save your memory, keep healthy :-)
-  file.close();
+  fileTime.close();
 
   StaticJsonDocument<1024> root;
-  auto error = deserializeJson(root, buf);
+  auto error = deserializeJson(root, bufTime);
 
   if (error)
   {
-    DEBUGLOG("Failed to parse config NETWORK file\r\n");
+    DEBUGLOG("Failed to parse config TIME file\r\n");
     return false;
   }
 
@@ -2062,7 +2222,7 @@ bool AsyncFSWebServer::saveHTTPAuth()
 #ifndef RELEASE
   String temp;
   serializeJsonPretty(json, temp);
-  DEBUGLOG("%s\r\n", temp);
+  DEBUGLOG("%s\r\n", temp.c_str());
 #endif // RELEASE
 
   serializeJson(json, configFile);
@@ -2394,7 +2554,8 @@ void AsyncFSWebServer::serverInit()
       return request->requestAuthentication();
     request->send(SPIFFS, PSTR("/update.html"));
   });
-  on(PSTR("/update"), HTTP_POST, [this](AsyncWebServerRequest *request) {
+  on(
+      PSTR("/update"), HTTP_POST, [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", (Update.hasError()) ? "FAIL" : "<META http-equiv=\"refresh\" content=\"15;URL=/update\">Update correct. Restarting...");
@@ -2432,6 +2593,12 @@ void AsyncFSWebServer::serverInit()
     if (!this->checkAuth(request))
       return request->requestAuthentication();
     this->send_config_network(request);
+  });
+
+  on(PSTR("/config/mqtt"), [this](AsyncWebServerRequest *request) {
+    if (!this->checkAuth(request))
+      return request->requestAuthentication();
+    this->send_config_mqtt(request);
   });
 
 #define HIDE_SECRET

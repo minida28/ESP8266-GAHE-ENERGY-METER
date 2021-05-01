@@ -225,6 +225,8 @@ void SyncClientThingspeak()
 
     SyncClient client;
 
+    if (packets[PACKET2].connection == 0) return;
+
     if (!client.connect("api.thingspeak.com", 80))
     {
         failed = true;
@@ -245,7 +247,7 @@ void SyncClientThingspeak()
                         bufHeap,
                         ESPHTTPServer._config.hostname,
                         "api.thingspeak.com",
-                        "DMFQ3BQPZV3U6RL1") > 0)
+                        "QSK88PPX9COHGEAA") > 0)
     {
         connected = true;
 
@@ -321,8 +323,8 @@ void Thingspeakloop()
 
         SyncClientThingspeak();
 
-        //  if (ws.count())
-        //     ws.textAll("Trigeered\n");
+         if (ws.count())
+            ws.textAll("Triggered\n");
     }
 
     if (connected)

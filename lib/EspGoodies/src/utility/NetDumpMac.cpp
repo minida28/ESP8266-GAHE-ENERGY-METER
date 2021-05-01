@@ -36,19 +36,19 @@ void netDumpMacsForOutput (Print& out, const char* ethdata, char netif_idx)
         if (netDump_is_ARP_who(ethdata))
         {
             netDumpMac(out, ethdata + 6);
-            out.print(F(">ff:ff:ff:ff:ff:ff"));
+            out.DEBUGLOG(F(">ff:ff:ff:ff:ff:ff"));
             return;
         }
         else if (netDump_is_ARP_is(ethdata))
             memcpy(&ip, ethdata + ETH_HDR_LEN + 14, 4);
         else
         {
-            out.print(F("arpmac?"));
+            out.DEBUGLOG(F("arpmac?"));
             return;
         }
     }
     else
-        out.print(F("mac/proto?"));
+        out.DEBUGLOG(F("mac/proto?"));
     
     ip4_addr_t ip4dst;
     struct eth_addr* eth_ret;
@@ -61,18 +61,18 @@ void netDumpMacsForOutput (Print& out, const char* ethdata, char netif_idx)
         if (ip_ret->addr == ip4dst.addr)
         {
             netDumpMac(out, (const char*)netif_ret->hwaddr);
-            out.print('>');
+            out.DEBUGLOG('>');
             netDumpMac(out, (const char*)eth_ret->addr);
             return;
         }
 
-    out.print(F("mac?"));
+    out.DEBUGLOG(F("mac?"));
 }
 #endif
 
 void netDumpMacs (Print& out, const char* ethdata)
 {
     netDumpMac(out, ethdata + 6);
-    out.print('>');
+    out.DEBUGLOG('>');
     netDumpMac(out, ethdata);
 }

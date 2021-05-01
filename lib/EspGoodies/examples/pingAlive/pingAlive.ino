@@ -39,14 +39,14 @@ void setup() {
   Serial.println("Connecting to " SSID);
   while (WiFi.status() != WL_CONNECTED)
   {
-    Serial.print('.');
+    Serial.DEBUGLOG('.');
     delay(500);
   }
 
   Serial.println("connected");
-  Serial.print("IP address = ");
+  Serial.DEBUGLOG("IP address = ");
   Serial.println(WiFi.localIP());
-  Serial.print("Gateway IP address = ");
+  Serial.DEBUGLOG("Gateway IP address = ");
   Serial.println(WiFi.gatewayIP());
 
   nextDisplayMs = millis() + DISPLAY_MS;

@@ -28,6 +28,15 @@
                     "$platformio"
                 ],
                 "label": "PlatformIO: Upload SPIFFS image"
+            },
+            {
+                "type": "PlatformIO",
+                "task": "Build Filesystem Image (esp12e)",
+                "problemMatcher": [
+                    "$platformio"
+                ],
+                "group": "build",
+                "label": "PlatformIO: Build Filesystem Image (esp12e)"
             }
         ]
     }

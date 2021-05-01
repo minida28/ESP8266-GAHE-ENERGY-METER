@@ -64,7 +64,7 @@ void DHT::begin(uint8_t usec) {
   // >= MIN_INTERVAL right away. Note that this assignment wraps around,
   // but so will the subtraction.
   _lastreadtime = millis() - MIN_INTERVAL;
-  DEBUG_PRINT("DHT max clock cycles: ");
+  DEBUG_DEBUGLOG("DHT max clock cycles: ");
   DEBUG_PRINTLN(_maxcycles, DEC);
   pullTime = usec;
 }
@@ -326,16 +326,16 @@ bool DHT::read(bool force) {
   }
 
   DEBUG_PRINTLN(F("Received from DHT:"));
-  DEBUG_PRINT(data[0], HEX);
-  DEBUG_PRINT(F(", "));
-  DEBUG_PRINT(data[1], HEX);
-  DEBUG_PRINT(F(", "));
-  DEBUG_PRINT(data[2], HEX);
-  DEBUG_PRINT(F(", "));
-  DEBUG_PRINT(data[3], HEX);
-  DEBUG_PRINT(F(", "));
-  DEBUG_PRINT(data[4], HEX);
-  DEBUG_PRINT(F(" =? "));
+  DEBUG_DEBUGLOG(data[0], HEX);
+  DEBUG_DEBUGLOG(F(", "));
+  DEBUG_DEBUGLOG(data[1], HEX);
+  DEBUG_DEBUGLOG(F(", "));
+  DEBUG_DEBUGLOG(data[2], HEX);
+  DEBUG_DEBUGLOG(F(", "));
+  DEBUG_DEBUGLOG(data[3], HEX);
+  DEBUG_DEBUGLOG(F(", "));
+  DEBUG_DEBUGLOG(data[4], HEX);
+  DEBUG_DEBUGLOG(F(" =? "));
   DEBUG_PRINTLN((data[0] + data[1] + data[2] + data[3]) & 0xFF, HEX);
 
   // Check we read 40 bits and that the checksum matches.

@@ -10,11 +10,12 @@
 #include "mqtt.h"
 // #include "dhtlib.h"
 #include "thingspeakhelper.h"
+#include "asyncpinghelper.h"
 
 // #include <ESP8266FtpServer.h>
 
 
-#define RELEASE
+//#define RELEASE
 
 #define DEBUGPORT Serial
 
@@ -36,22 +37,52 @@ void setup()
 {
   pinMode(2, OUTPUT); // Initialize the BUILTIN_LED pin as an output
   //pinMode(D5, INPUT_PULLUP);
-  Serial.begin(115200);
-  Serial.setDebugOutput(false);
-  //Serial1.begin(115200);
+  DEBUGPORT.begin(115200);
+
+#ifndef RELEASE
+  DEBUGPORT.setDebugOutput(true);
+#endif
+
+  DEBUGLOG("Mounting FS...\r\n");
+  if (!SPIFFS.begin())
+  {
+    DEBUGLOG("Failed to mount file system\r\n");
+    return;
+  }
+
+  DEBUGLOG("Setup MODBUS...\r\n");
+  modbus_setup();
+
+  DEBUGLOG("RTC Time...\r\n");
+  RtcSetup();
+
+  DEBUGLOG("Setup Time...\r\n");
+  TimeSetup();
+
+  // DEBUGLOG("Setup MQTT...\r\n");
+  // mqtt_setup();
 
   DEBUGLOG("Starting ESPHTTPServer...\r\n");
   ESPHTTPServer.start(&SPIFFS);
 
-  Timesetup();
+  // Timesetup();
 
 // #if defined(SOFTWARESERIAL)
 //   Serial.swap();
 // #endif
-
-
+  DEBUGLOG("Setup AsyncPING...\r\n");
+  PingSetup();
   DEBUGLOG("Setup MQTT...\r\n");
-  mqtt_setup();
+  // mqtt_setup();
+
+  // DEBUGLOG("RTC Time...\r\n");
+  // RtcSetup();
+  // DEBUGLOG("Setup Time...\r\n");
+  // TimeSetup();
+
+  waitingForInternetConnectedTimer.once(30, FlipWaitingForInternet);
+
+  nextSync = 30;
 
   // -------------------------------------------------------------------
   // Load configuration from EEPROM & Setup Async Server
@@ -64,24 +95,24 @@ void setup()
   // DEBUGLOG("Starting ESPHTTPServer...\r\n");
   // ESPHTTPServer.start(&SPIFFS);
 
-  modbus_setup();
+  // modbus_setup();
 
   Thingspeaksetup();
 
-  DEBUGLOG("Setup completed!");
+  DEBUGLOG("Setup completed!\r\n\r\n");
 }
 
 bool oldState;
-time_t utcTime;
-bool state500ms;
-bool state1000ms;
+// time_t utcTime;
+// bool state500ms;
+// bool state1000ms;
 bool tick500ms;
 // bool tick1000ms;
 
 
 void loop()
 {
-  Timeloop();
+  TimeLoop();
 
   // utcTime = now;
 
@@ -92,10 +123,10 @@ void loop()
 
   // if (utcTime != prevDisplay)
   // {
-  //   unsigned long currMilis = millis();
-  //   prevTimer500ms = currMilis;
+  //   // unsigned long currMilis = millis();
+  //   // prevTimer500ms = currMilis;
   //   // prevTimer1000ms = currMilis;
-  //   // tick1000ms = true;
+  //   tick1000ms = true;
   //   prevDisplay = utcTime;
   // }
 
@@ -130,17 +161,22 @@ void loop()
   // if (tick1000ms)
   // {
   // }
-
+  // mqtt_loop();
+  modbus_update();
+  modbus_loop_1(); 
   ESPHTTPServer.loop();
   // ftpSrv.handleFTP();
 
   // modbus_loop();
-  modbus_update();
-  modbus_loop_1();
+  
+
+  
   // modbus_update();
 
   // dht_loop();
-  mqtt_loop();
+  // mqtt_loop();
+
+  // TimeLoop();
 
   Thingspeakloop();
 

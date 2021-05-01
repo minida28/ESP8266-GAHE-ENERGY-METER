@@ -37,7 +37,7 @@ void netDumpHex (Print& out, const char* data, size_t size, bool show_hex, bool 
         {
             if (show_hex)
                 for (size_t i = end; i < start + per_line; i++)
-                    out.print("   ");
+                    out.DEBUGLOG("   ");
             for (size_t i = start; i < end; i++)
                 out.printf("%c", data[i] >= 32 && data[i] < 128? data[i]: '.');
         }

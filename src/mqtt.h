@@ -37,20 +37,37 @@
 #include <ESP8266WiFi.h>
 #include <Ticker.h>
 
+const char pgm_mqtt_enabled[] PROGMEM = "enabled";
+const char pgm_mqtt_server[] PROGMEM = "server";
+const char pgm_mqtt_port[] PROGMEM = "port";
+const char pgm_mqtt_user[] PROGMEM = "user";
+const char pgm_mqtt_pass[] PROGMEM = "pass";
+const char pgm_mqtt_clientid[] PROGMEM = "clientid";
+const char pgm_mqtt_keepalive[] PROGMEM = "keepalive";
+const char pgm_mqtt_cleansession[] PROGMEM = "cleansession";
+const char pgm_mqtt_lwttopicprefix[] PROGMEM = "lwttopicprefix";
+const char pgm_mqtt_lwtqos[] PROGMEM = "lwtqos";
+const char pgm_mqtt_lwtretain[] PROGMEM = "lwtretain";
+const char pgm_mqtt_lwtpayload[] PROGMEM = "lwtpayload";
+// const char pgm_mqtt_lwt[] PROGMEM = "mqtt_lwt";
+
 extern AsyncMqttClient mqttClient;
 
 // MQTT config
 typedef struct {
+  bool enabled = true;
   char server[64] = "10.0.2.2";
   uint16_t port = 1883;
   char user[32] = "test";
   char pass[64] = "test";
-  char clientid[16] = "kwh1";
+  char clientid[24] = "kwh1";
   uint16_t keepalive = 5;
   bool cleansession = true;
-  char lwttopic[64] = "kwh1/mqttstatus";
+  // char lwttopic[64] = "kwh1/mqttstatus";
+  char lwttopicprefix[64] =  "kwh1/mqttstatus";
   uint8_t lwtqos = 2;
   bool lwtretain = true;
+  char lwtfulltopic[90];
   char lwtpayload[64] = "DISCONNECTED";
 
   char publish_1_topic[64] = "kwh1/mqttstatus";

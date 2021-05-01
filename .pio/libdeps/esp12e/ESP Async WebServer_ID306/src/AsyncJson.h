@@ -57,9 +57,9 @@ class ChunkPrint : public Print {
     size_t _to_write;
     size_t _pos;
   public:
-    ChunkPrint(uint8_t* destination, size_t from, size_t len)
+    ChunkDEBUGLOG(uint8_t* destination, size_t from, size_t len)
       : _destination(destination), _to_skip(from), _to_write(len), _pos{0} {}
-    virtual ~ChunkPrint(){}
+    virtual ~ChunkDEBUGLOG(){}
     size_t write(uint8_t c){
       if (_to_skip > 0) {
         _to_skip--;

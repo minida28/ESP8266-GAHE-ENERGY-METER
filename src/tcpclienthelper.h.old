@@ -1,0 +1,7 @@
+#ifndef _tcpclientpeakhelper_h
+#define _tcpclientpeakhelper_h
+
+void Tcpclientsetup();
+void Tcpclientloop();
+
+#endif

@@ -25,7 +25,7 @@
 
 
 
-#define RELEASE  // Comment to enable debug output
+//#define RELEASE  // Comment to enable debug output
 
 // #define DBG_OUTPUT_PORT Serial1
 // #define DEBUGPORT Serial1
@@ -184,10 +184,13 @@ protected:
   void updateFirmware(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
 
   void send_config_network(AsyncWebServerRequest *request);
+  void send_config_mqtt(AsyncWebServerRequest *request);
   bool load_config_network();
   bool load_config_time();
   bool save_config_network();
   bool save_config_time();
+
+  
 
   static String urldecode(String input); // (based on https://code.google.com/p/avr-netino/)
   static unsigned char h2int(char c);
@@ -217,6 +220,8 @@ extern bool saveConfigTimeFlag;
 
 void runAsyncClientEmoncms();
 void runAsyncClientThingspeak();
+
+bool save_config_time();
 
 // extern uint16_t num;
 

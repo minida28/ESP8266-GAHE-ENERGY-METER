@@ -35,7 +35,7 @@ void netDumpMac (Print& out, const char* mac)
     {
         out.printf("%02x", (unsigned char)mac[i]);
         if (i < 5)
-            out.print(':');
+            out.DEBUGLOG(':');
     }
 }
 
@@ -45,27 +45,27 @@ void netDumpIPv4 (Print& out, const char* ethdata)
     {
         out.printf("%u", (unsigned char)ethdata[i]);
         if (i < 3)
-            out.print('.');
+            out.DEBUGLOG('.');
     }
 }
 
 static void netDumpARP (Print& out, const char* ethdata, size_t size)
 {
-    out.print(F(" ARP "));
+    out.DEBUGLOG(F(" ARP "));
     if (size < ETH_HDR_LEN + 28)
         return;
     char type = netDump_getARPType(ethdata);
     if (type == 1)
     {
-        out.print(F("who has "));
+        out.DEBUGLOG(F("who has "));
         netDumpIPv4(out, ethdata + ETH_HDR_LEN + 24);
-        out.print(F(" tell "));
+        out.DEBUGLOG(F(" tell "));
         netDumpIPv4(out, ethdata + ETH_HDR_LEN + 14);
     }
     else if (type == 2)
     {
         netDumpIPv4(out, ethdata + ETH_HDR_LEN + 14);
-        out.print(F(" is at "));
+        out.DEBUGLOG(F(" is at "));
         netDumpMac(out, ethdata + ETH_HDR_LEN + 8);
     }
     else
@@ -75,7 +75,7 @@ static void netDumpARP (Print& out, const char* ethdata, size_t size)
 
 static void netDumpICMP (Print& out, const char* ethdata, size_t size)
 {
-    out.print(F(" ICMP "));
+    out.DEBUGLOG(F(" ICMP "));
     if (size < 1)
         return snap(out);
         
@@ -103,17 +103,17 @@ static void netDumpPort (Print& out, const char* ethdata)
 void netDumpTCPFlags (Print& out, const char* ethdata)
 {
     uint16_t flags = netDump_getTcpFlags(ethdata);
-    out.print('[');
+    out.DEBUGLOG('[');
     const char chars [] = "FSRP.UECN";
     for (uint8_t i = 0; i < sizeof chars; i++)
         if (flags & (1 << i))
-            out.print(chars[i]);
-    out.print(']');
+            out.DEBUGLOG(chars[i]);
+    out.DEBUGLOG(']');
 }
 
 static void netDumpTCP (Print& out, const char* ethdata, size_t size)
 {
-    out.print(F(" TCP "));
+    out.DEBUGLOG(F(" TCP "));
     if (size < ETH_HDR_LEN + 20 + 16)
         return snap(out);
     netDumpPort(out, ethdata);
@@ -154,7 +154,7 @@ static void netDumpTCP (Print& out, const char* ethdata, size_t size)
 
 static void netDumpUDP (Print& out, const char* ethdata, size_t size)
 {
-    out.print(F(" UDP "));
+    out.DEBUGLOG(F(" UDP "));
     if (size < ETH_HDR_LEN + 20 + 8)
         return snap(out);
 
@@ -171,10 +171,10 @@ static void netDumpIPv4 (Print& out, const char* ethdata, size_t size)
     if (size < ETH_HDR_LEN + 20)
         return snap(out);
         
-    out.print(F(" IPv4 "));
+    out.DEBUGLOG(F(" IPv4 "));
     
     netDumpIPv4(out, ethdata + ETH_HDR_LEN + 12);
-    out.print('>');
+    out.DEBUGLOG('>');
     netDumpIPv4(out, ethdata + ETH_HDR_LEN + 16);
     //out.printf(" (iphdrlen=%d)", netDump_getIpHdrLen(ethdata));
 

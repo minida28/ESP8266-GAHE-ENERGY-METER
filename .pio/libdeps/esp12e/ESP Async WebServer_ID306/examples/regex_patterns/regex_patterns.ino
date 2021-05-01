@@ -36,7 +36,7 @@ void setup() {
         return;
     }
 
-    Serial.print("IP Address: ");
+    Serial.DEBUGLOG("IP Address: ");
     Serial.println(WiFi.localIP());
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){

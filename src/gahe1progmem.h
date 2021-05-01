@@ -162,6 +162,10 @@ const char pgm_online[] PROGMEM = "ONLINE";
 
 // const char pgm_descriptionxmlfile[] PROGMEM = "/description.xml";
 
+const char pgm_RTC[] PROGMEM = "RTC";
+const char pgm_NTP[] PROGMEM = "NTP";
+const char pgm_None[] PROGMEM = "None";
+
 //system info
 const char pgm_filename[] PROGMEM = "filename";
 const char pgm_compiledate[] PROGMEM = "compiledate";
@@ -276,5 +280,15 @@ const char *const wifimode_P[] PROGMEM =
         AP_Str,
         STA_AP_Str,
         MODE_MAX_Str};
+
+const char RTC_TIME_VALID_Str[] PROGMEM = "RTC_TIME_VALID";
+const char RTC_LOST_CONFIDENT_Str[] PROGMEM = "RTC_LOST_CONFIDENT";
+const char CLOCK_NOT_RUNNING_Str[] PROGMEM = "CLOCK_NOT_RUNNING";
+
+const char *const rtcstatus_P[] PROGMEM =
+    {
+        RTC_TIME_VALID_Str,
+        RTC_LOST_CONFIDENT_Str,
+        CLOCK_NOT_RUNNING_Str};
 
 #endif

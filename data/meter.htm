@@ -180,43 +180,33 @@
                       <td></td>
                     </tr>
                     <tr>
-                      <td>Pst kVArh</td>
-                      <td><span id="x_pstkvarh"></span></td>
-                      <td></td>
-                    </tr>
-                    <tr>
-                      <td>Ngt kVArh</td>
-                      <td><span id="x_ngtkvarh"></span></td>
-                      <td></td>
-                    </tr>
-                    <tr>
                       <td>Current Threshold</td>
                       <td><span id="x_currentthreshold"></span></td>
                       <td></td>
                     </tr>
                     <tr>
                       <td>Total Request</td>
-                      <td><span id="x_packet3_requests"></span></td>
+                      <td><span id="x_packet2_requests"></span></td>
                       <td></td>
                     </tr>
                     <tr>
                       <td>Success Request</td>
-                      <td><span id="x_packet3_successful_requests"></span></td>
+                      <td><span id="x_packet2_successful_requests"></span></td>
                       <td></td>
                     </tr>
                     <tr>
                       <td>Failed Request</td>
-                      <td><span id="x_packet3_failed_requests"></span></td>
+                      <td><span id="x_packet2_failed_requests"></span></td>
                       <td></td>
                     </tr>
                     <tr>
                       <td>Error</td>
-                      <td><span id="x_packet3_exception_errors"></span></td>
+                      <td><span id="x_packet2_exception_errors"></span></td>
                       <td></td>
                     </tr>
                     <tr>
                       <td>Connection</td>
-                      <td><span id="x_packet3_connection"></span></td>
+                      <td><span id="x_packet2_connection"></span></td>
                       <td></td>
                     </tr>
                   </tbody>
@@ -308,7 +298,7 @@ function handleServerResponse()
   if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
     
     xmlResponse = xmlHttp.responseXML;
-    // console.log(xmlResponse);
+    console.log(xmlResponse);
     
     insertTableData("meterreading");
 
@@ -345,27 +335,30 @@ function insertTableData(node_name)
         // console.log(dt.toDateString());
         // console.log(dt.toTimeString());
         
-        var dt = new Date();
+        // var dt = new Date();
         
-        var lastBoot = new Date(y * 1000);
-        var uptime = dt - lastBoot;
-        uptime = new Date(uptime);
-        var uptimeStr = Math.floor(uptime/1000/86400) + ' day(s) ' + uptime.getUTCHours() + ':' + pad(uptime.getUTCMinutes(), 2) + ':' + pad(uptime.getUTCSeconds(), 2);
+        // var lastBoot = new Date(y * 1000);
+        // var uptime = dt - lastBoot;
+        // uptime = new Date(uptime);
+        // var uptimeStr = Math.floor(uptime/1000/86400) + ' day(s) ' + uptime.getUTCHours() + ':' + pad(uptime.getUTCMinutes(), 2) + ':' + pad(uptime.getUTCSeconds(), 2);
         
         
         // var lastBoot = new Date(json.lastboot * 1000);
         
         // var lastSync = new Date(json.lastsyncbyntp * 1000);
         // var nextSync = new Date(json.nextsync * 1000);
+        
+        uptime = y;
       }
     
     // construct element id from nodeName
     // then insert to data to table
     
-    if (x === "runtime")
-    {
-      y = uptimeStr;
-    }
+    // if (x === "runtime")
+    // {
+    //   // y = uptimeStr;
+    //   uptime = y;
+    // }
     
     var element = document.getElementById("x_" + x);
     if (element)
