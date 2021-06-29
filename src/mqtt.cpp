@@ -46,7 +46,7 @@
 #define DEBUGLOG(...)
 #endif
 
-#define MQTT_CONFIG_FILE "/configMqtt.json"
+#define MQTT_CONFIG_FILE "/configmqtt.json"
 #define PUBSUBJSON_FILE "/pubsub.json"
 
 const char pgm_txt_subcribedTopic_0[] PROGMEM = "/rumah/sts/1s/kwh1/watt";
@@ -96,28 +96,28 @@ AsyncMqttClient mqttClient;
 
 Ticker mqttReconnectTimer;
 
-// WiFiEventHandler wifiConnectHandlerForMqtt;
-// WiFiEventHandler wifiDisconnectHandlerForMqtt;
+WiFiEventHandler wifiConnectHandlerForMqtt;
+WiFiEventHandler wifiDisconnectHandlerForMqtt;
 
 //IPAddress mqttServer(192, 168, 10, 3);
 
 // MQTT config struct
 strConfigMqtt configMqtt;
 
-// void onWifiGotIp(const WiFiEventStationModeGotIP &event)
-// {
-//   DEBUGLOG("Connected to Wi-Fi.\r\n");
-//   DEBUGLOG("Connecting to MQTT...\r\n");
-//   // connectToMqtt();
-//   mqttClient.connect();
-// }
+void onWifiGotIp(const WiFiEventStationModeGotIP &event)
+{
+  DEBUGLOG("Connected to Wi-Fi.\r\n");
+  DEBUGLOG("Connecting to MQTT...\r\n");
+  // connectToMqtt();
+  mqttClient.connect();
+}
 
-// void onWifiDisconnect(const WiFiEventStationModeDisconnected &event)
-// {
-//   DEBUGLOG("Disconnected from Wi-Fi.\r\n");
-//   mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
-//   //wifiReconnectTimer.once(2, connectToWifi);
-// }
+void onWifiDisconnect(const WiFiEventStationModeDisconnected &event)
+{
+  DEBUGLOG("Disconnected from Wi-Fi.\r\n");
+  mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+  //wifiReconnectTimer.once(2, connectToWifi);
+}
 
 void connectToMqtt()
 {
@@ -125,14 +125,121 @@ void connectToMqtt()
   mqttClient.connect();
 }
 
+void MqttConnectedCb()
+{
+  // DEBUGLOG("Connected to MQTT.\r\n  Session present: %d\r\n");
+  DEBUGLOG("Connected to MQTT.\r\n");
+
+  File configFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
+  if (!configFile)
+  {
+    DEBUGLOG("Failed to open config file\r\n");
+    return;
+  }
+
+  size_t size = configFile.size();
+  DEBUGLOG("PUBSUBJSON_FILE file size: %d bytes\r\n", size);
+  if (size > 1024)
+  {
+    DEBUGLOG("WARNING, file size maybe too large\r\n");
+
+    //configFile.close();
+
+    //return false;
+  }
+
+  // Allocate a buffer to store contents of the file.
+  std::unique_ptr<char[]> buf(new char[size]);
+
+  // We don't use String here because ArduinoJson library requires the input
+  // buffer to be mutable. If you don't use ArduinoJson, you may as well
+  // use configFile.readString instead.
+  configFile.readBytes(buf.get(), size);
+  configFile.close();
+  //DynamicJsonBuffer jsonBuffer(1024);
+  StaticJsonDocument<1536> json;
+
+  auto error = deserializeJson(json, buf.get());
+
+  //  JsonVariant json;
+  //  json = jsonBuffer.parse(buf.get());
+
+  if (error)
+  {
+    DEBUGLOG("Failed to parse MQTT config file\r\n");
+    return;
+  }
+
+#ifndef RELEASE
+  String temp;
+  serializeJsonPretty(json, temp);
+  DEBUGLOG("%s\r\n", temp.c_str());
+#endif
+
+  char bufFullTopic[64];
+  strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
+  strncat(bufFullTopic, "/mqttstatus", sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
+
+  // publish 1
+  mqttClient.publish(
+      bufFullTopic,  //topic
+      configMqtt.publish_1_qos,    //qos
+      configMqtt.publish_1_retain, //retain
+      configMqtt.publish_1_payload //payload
+  );
+
+  // publish 2
+  dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
+  mqttClient.publish(PSTR("/rumah/sts/kwh1/currentthreshold"), 2, true, bufCurrentThreshold);
+
+  // subscribe 1
+  mqttClient.subscribe(
+      configMqtt.subscribe_1_topic,
+      configMqtt.subscribe_1_qos);
+  DEBUGLOG(
+      "Subscribing packet  topic: %s\n  QoS: %d\r\n",
+      configMqtt.subscribe_1_topic, configMqtt.subscribe_1_qos);
+
+  // subscribe 2
+  mqttClient.subscribe(
+      configMqtt.subscribe_2_topic,
+      configMqtt.subscribe_2_qos);
+  DEBUGLOG(
+      "Subscribing packet  topic: %s\n  QoS: %d\r\n",
+      configMqtt.subscribe_2_topic, configMqtt.subscribe_2_qos);
+
+  //  //subscribe 2
+  //  const char* subscribe_2_topic = json[FPSTR(pgm_subscribe_2)][0];
+  //  uint8_t subscribe_2_qos = json[FPSTR(pgm_subscribe_2)][1];
+  //  uint16_t packetIdSub2 = mqttClient.subscribe(subscribe_2_topic, subscribe_2_qos);
+  //  DEBUGLOG("Subscribing packetId: %d\r\n  topic: %s\r\n  QoS: %d\r\n"), packetIdSub2, subscribe_2_topic, subscribe_2_qos);
+}
+
+void MqttDisconnectedCb()
+{
+  DEBUGLOG("Disconnected from MQTT.\r\n");
+
+  if (WiFi.isConnected())
+  {
+    mqttReconnectTimer.once(5, connectToMqtt);
+  }
+}
+
 void onMqttConnect(bool sessionPresent)
 {
   mqttConnectedFlag = true;
+  // MqttConnectedCb();
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 {
-  mqttDisconnectedFlag = true;
+  // mqttDisconnectedFlag = true;
+  DEBUGLOG("Disconnected from MQTT.\r\n");
+
+  if (WiFi.isConnected())
+  {
+    mqttReconnectTimer.once(5, connectToMqtt);
+  }
 }
 
 void onMqttSubscribe(uint16_t packetId, uint8_t qos)
@@ -240,9 +347,9 @@ bool load_config_mqtt()
 {
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
-  size_t fileLen = strlen_P(pgm_configfilemqtt);
-  char filename[fileLen + 1];
-  strcpy_P(filename, pgm_configfilemqtt);
+  // size_t fileLen = strlen_P(pgm_configfilemqtt);
+  // char filename[fileLen + 1];
+  // strcpy_P(filename, pgm_configfilemqtt);
 
   // File file = SPIFFS.open(filename, "r");
   File file = SPIFFS.open(MQTT_CONFIG_FILE, "r");
@@ -425,111 +532,13 @@ bool mqtt_load_pubsubconfig()
   return true;
 }
 
-void MqttConnectedCb()
-{
-  // DEBUGLOG("Connected to MQTT.\r\n  Session present: %d\r\n");
-  DEBUGLOG("Connected to MQTT.\r\n");
 
-  File configFile = SPIFFS.open(PUBSUBJSON_FILE, "r");
-  if (!configFile)
-  {
-    DEBUGLOG("Failed to open config file\r\n");
-    return;
-  }
-
-  size_t size = configFile.size();
-  DEBUGLOG("PUBSUBJSON_FILE file size: %d bytes\r\n", size);
-  if (size > 1024)
-  {
-    DEBUGLOG("WARNING, file size maybe too large\r\n");
-
-    //configFile.close();
-
-    //return false;
-  }
-
-  // Allocate a buffer to store contents of the file.
-  std::unique_ptr<char[]> buf(new char[size]);
-
-  // We don't use String here because ArduinoJson library requires the input
-  // buffer to be mutable. If you don't use ArduinoJson, you may as well
-  // use configFile.readString instead.
-  configFile.readBytes(buf.get(), size);
-  configFile.close();
-  //DynamicJsonBuffer jsonBuffer(1024);
-  StaticJsonDocument<1536> json;
-
-  auto error = deserializeJson(json, buf.get());
-
-  //  JsonVariant json;
-  //  json = jsonBuffer.parse(buf.get());
-
-  if (error)
-  {
-    DEBUGLOG("Failed to parse MQTT config file\r\n");
-    return;
-  }
-
-#ifndef RELEASE
-  String temp;
-  serializeJsonPretty(json, temp);
-  DEBUGLOG("%s\r\n", temp.c_str());
-#endif
-
-  char bufFullTopic[64];
-  strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
-  strncat(bufFullTopic, "/mqttstatus", sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
-
-  // publish 1
-  mqttClient.publish(
-      bufFullTopic,  //topic
-      configMqtt.publish_1_qos,    //qos
-      configMqtt.publish_1_retain, //retain
-      configMqtt.publish_1_payload //payload
-  );
-
-  // publish 2
-  dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
-  mqttClient.publish(PSTR("/rumah/sts/kwh1/currentthreshold"), 2, true, bufCurrentThreshold);
-
-  // subscribe 1
-  mqttClient.subscribe(
-      configMqtt.subscribe_1_topic,
-      configMqtt.subscribe_1_qos);
-  DEBUGLOG(
-      "Subscribing packet  topic: %s\n  QoS: %d\r\n",
-      configMqtt.subscribe_1_topic, configMqtt.subscribe_1_qos);
-
-  // subscribe 2
-  mqttClient.subscribe(
-      configMqtt.subscribe_2_topic,
-      configMqtt.subscribe_2_qos);
-  DEBUGLOG(
-      "Subscribing packet  topic: %s\n  QoS: %d\r\n",
-      configMqtt.subscribe_2_topic, configMqtt.subscribe_2_qos);
-
-  //  //subscribe 2
-  //  const char* subscribe_2_topic = json[FPSTR(pgm_subscribe_2)][0];
-  //  uint8_t subscribe_2_qos = json[FPSTR(pgm_subscribe_2)][1];
-  //  uint16_t packetIdSub2 = mqttClient.subscribe(subscribe_2_topic, subscribe_2_qos);
-  //  DEBUGLOG("Subscribing packetId: %d\r\n  topic: %s\r\n  QoS: %d\r\n"), packetIdSub2, subscribe_2_topic, subscribe_2_qos);
-}
-
-void MqttDisconnectedCb()
-{
-  DEBUGLOG("Disconnected from MQTT.\r\n");
-
-  if (WiFi.isConnected())
-  {
-    mqttReconnectTimer.once(5, connectToMqtt);
-  }
-}
 
 bool mqtt_setup()
 {
   //register mqtt handler
-  // wifiConnectHandlerForMqtt = WiFi.onStationModeGotIP(onWifiGotIp);
-  // wifiDisconnectHandlerForMqtt = WiFi.onStationModeDisconnected(onWifiDisconnect);
+  wifiConnectHandlerForMqtt = WiFi.onStationModeGotIP(onWifiGotIp);
+  wifiDisconnectHandlerForMqtt = WiFi.onStationModeDisconnected(onWifiDisconnect);
 
   mqttClient.onConnect(onMqttConnect);
   mqttClient.onDisconnect(onMqttDisconnect);
@@ -587,11 +596,11 @@ void mqtt_loop()
     MqttConnectedCb();
   }
 
-  if (mqttDisconnectedFlag)
-  {
-    mqttDisconnectedFlag = false;
-    MqttDisconnectedCb();
-  }
+  // if (mqttDisconnectedFlag)
+  // {
+  //   mqttDisconnectedFlag = false;
+  //   MqttDisconnectedCb();
+  // }
 
   if (mqttPublishFlag)
   {

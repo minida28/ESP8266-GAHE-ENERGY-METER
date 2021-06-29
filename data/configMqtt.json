@@ -7,7 +7,7 @@
   "clientid": "kwh1",
   "keepalive": 5,
   "cleansession": true,
-  "lwttopicprefix": "kwh1/mqttstatus",
+  "lwttopicprefix": "mqttstatus",
   "lwtqos": 2,
   "lwtretain": true,
   "lwtpayload": "DISCONNECTED"

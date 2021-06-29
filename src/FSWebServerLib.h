@@ -9,6 +9,46 @@
 #include "WProgram.h"
 #endif
 
+// Defaulut is SPIFFS, FatFS: only on ESP32, also choose partition scheme w/ ffat. 
+// Comment 2 lines below or uncomment only one of them
+
+#define USE_LittleFS
+#define SPIFFS MYFS
+//#define USE_FatFS // Only ESP32
+
+#include <ArduinoOTA.h>
+#ifdef ESP32
+ #include <FS.h>
+ #ifdef USE_LittleFS
+  #define MYFS LITTLEFS
+  #include "LITTLEFS.h"
+ #elif defined(USE_FatFS)
+  #define MYFS FFat
+  #include "FFat.h"
+ #else
+  #define MYFS SPIFFS
+  #include <SPIFFS.h>
+ #endif
+ #include <ESPmDNS.h>
+ #include <WiFi.h>
+ #include <AsyncTCP.h>
+#elif defined(ESP8266)
+ #ifdef USE_LittleFS
+  #include <FS.h>
+  #define MYFS LittleFS
+  #include <LittleFS.h> 
+ #elif defined(USE_FatFS)
+  #error "FatFS only on ESP32 for now!"
+ #else
+  #define MYFS SPIFFS
+ #endif
+ #include <ESP8266WiFi.h>
+ #include <ESPAsyncTCP.h>
+ #include <ESP8266mDNS.h>
+#endif
+#include <ESPAsyncWebServer.h>
+#include <SPIFFSEditor.h>
+
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 // #include <TimeLib.h>

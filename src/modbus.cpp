@@ -36,7 +36,7 @@
 #define PIN_LED 2 // WEMOS_PIN_D4
 
 // The total amount of available memory on the master to store data
-#define TOTAL_NO_OF_REGISTERS 10*TOTAL_NO_OF_PACKETS
+#define TOTAL_NO_OF_REGISTERS 10 * TOTAL_NO_OF_PACKETS
 
 #define SOFTWARESERIAL
 
@@ -137,8 +137,10 @@ SoftwareSerial swSer;
 #endif
 
 Ticker ticker1000msModbus;
+Ticker ticker60sModbus;
 
 bool tick1000msModbus;
+bool tick60sModbus;
 uint32_t numModbusSuccessReq = 0;
 
 void Ticking1000ms()
@@ -146,10 +148,16 @@ void Ticking1000ms()
   tick1000msModbus = true;
 }
 
+void Ticking60s()
+{
+  tick60sModbus = true;
+}
+
 void modbus_setup()
 {
 
   ticker1000msModbus.attach(1, Ticking1000ms);
+  ticker60sModbus.attach(60, Ticking60s);
 
 #if defined(SOFTWARESERIAL)
   swSer.begin(baud, SWSERIAL_8N1, Rx, Tx, false, 95, 11);
@@ -167,11 +175,10 @@ void modbus_setup()
 
   // modbus_construct(&packets[PACKET1], 4, READ_HOLDING_REGISTERS, 0, 1, 0);   // DMM
 
-
-  modbus_construct(&packets[PACKET1], 3, READ_INPUT_REGISTERS, 10, 2, 0);    // read Present Voltage (Volt)
-  modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2);    // read Present Current (Ampere)
-  modbus_construct(&packets[PACKET3], 3, READ_INPUT_REGISTERS, 28, 2, 4);    // read Present True Power (Watt or kW)
-  modbus_construct(&packets[PACKET4], 3, READ_INPUT_REGISTERS, 50, 2, 6);   // read Accumulative Positive kWh
+  modbus_construct(&packets[PACKET1], 3, READ_INPUT_REGISTERS, 10, 2, 0); // read Present Voltage (Volt)
+  modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2); // read Present Current (Ampere)
+  modbus_construct(&packets[PACKET3], 3, READ_INPUT_REGISTERS, 28, 2, 4); // read Present True Power (Watt or kW)
+  modbus_construct(&packets[PACKET4], 3, READ_INPUT_REGISTERS, 50, 2, 6); // read Accumulative Positive kWh
 
   // modbus_construct(&packets[PACKET1], 3, READ_INPUT_REGISTERS, 10, 2, 0);    // read Present Voltage (Volt)
   // modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2);    // read Present Current (Ampere)
@@ -223,7 +230,10 @@ void modbus_loop_1()
     esp_restart();
     return;
   }
-  else {return;}
+  else
+  {
+    return;
+  }
 
   static bool ledOn = 0;
 
@@ -258,9 +268,8 @@ void modbus_loop_1()
 
   numModbusSuccessReq++;
 
-  ledOn = !ledOn;
-  digitalWrite(PIN_LED, ledOn);
-
+  // ledOn = !ledOn;
+  // digitalWrite(PIN_LED, ledOn);
 
   if (packets[PACKET2].successful_requests != oldrequestPACKET2 &&
       packets[PACKET3].successful_requests != oldrequestPACKET3 &&
@@ -270,9 +279,13 @@ void modbus_loop_1()
     oldrequestPACKET2 = packets[PACKET2].successful_requests;
     oldrequestPACKET3 = packets[PACKET3].successful_requests;
     oldrequestPACKET4 = packets[PACKET4].successful_requests;
-  } else {
+  }
+  else
+  {
     return;
   }
+
+
 
   float Voltage;
   float Ampere;
@@ -335,67 +348,127 @@ void modbus_loop_1()
   // temp = (unsigned long)regs[20] << 16 | regs[21];
   // Unk2 = *(float *)p;
 
-  dtostrf(Voltage, 0, 1, bufVoltage);             /* Voltage */
-  dtostrf(Ampere, 0, 2, bufAmpere);               /* Ampere */
-  dtostrf(Watt, 0, 1, bufWatt);                   /* Wattage */
+  dtostrf(Voltage, 0, 1, bufVoltage); /* Voltage */
+  dtostrf(Ampere, 0, 2, bufAmpere);   /* Ampere */
+  dtostrf(Watt, 0, 1, bufWatt);       /* Wattage */
   // dtostrf(Var, 0, 1, bufVar);                     /* Positive Var */
   // dtostrf(Frequency, 0, 1, bufFrequency);         /* Frequency Hz */
-  dtostrf(Pstkwh, 0, 1, bufPstkwh);               /* Positive kWh */
+  dtostrf(Pstkwh, 0, 2, bufPstkwh); /* Positive kWh */
   // dtostrf(Pstkvarh, 0, 1, bufPstkvarh);           /* Positive kVarh */
   // dtostrf(Ngtkvarh, 0, 1, bufNgtkvarh);           /* Negative kVarh */
   // dtostrf(PowerFactor, 0, 1, bufPowerFactor);     /* Power Factor */
   // dtostrf(ApparentPower, 0, 1, bufApparentPower); /* Apparent Power */
   // dtostrf(Unk2, 0, 1, bufUnk2);                   /* Unk2 */
 
-
-  if (tick1000msModbus){
-    tick1000msModbus = false;
-  } else {
-    return;
-  } 
-
-  // if (numModbusSuccessReq <= 60)
-  //   return;
-
-  StaticJsonDocument<512> root;
-
-  root[FPSTR(pgm_voltage)] = bufVoltage;
-  root[FPSTR(pgm_ampere)] = bufAmpere;
-  root[FPSTR(pgm_watt)] = bufWatt;
-  root[FPSTR(pgm_var)] = bufVar;
-  root[FPSTR(pgm_frequency)] = bufFrequency;
-  root[FPSTR(pgm_pstkwh)] = bufPstkwh;
-  root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
-  root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
-  root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
-  root[FPSTR(pgm_apparentpower)] = bufApparentPower;
-  // root[FPSTR(pgm_unk2)] = bufUnk2;
-  root["heap"] = ESP.getFreeHeap();
-
-  size_t len = measureJson(root);
-
-  char buf[len + 1];
-  serializeJson(root, buf, sizeof(buf));
-
-  // if (ws.hasClient(clientID))
-  // {
-  //   ws.textAll(buf);
-  // }
-
-  if (mqttClient.connected())
+  if (tick1000msModbus)
   {
-    char bufFullTopic[64];
-    strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
-    strncat(bufFullTopic, "/meterreading/1s", sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
-    mqttClient.publish(
-        bufFullTopic,  //topic
-        0, //qos
-        0, //retain
-        buf //payload
-    );
+    ledOn = !ledOn;
+    digitalWrite(PIN_LED, false);
+
+    tick1000msModbus = false;
+
+    // if (numModbusSuccessReq <= 60)
+    //   return;
+
+    StaticJsonDocument<512> root;
+
+    root[FPSTR(pgm_voltage)] = bufVoltage;
+    root[FPSTR(pgm_ampere)] = bufAmpere;
+    root[FPSTR(pgm_watt)] = bufWatt;
+    root[FPSTR(pgm_var)] = bufVar;
+    root[FPSTR(pgm_frequency)] = bufFrequency;
+    root[FPSTR(pgm_pstkwh)] = bufPstkwh;
+    root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
+    root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
+    root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
+    root[FPSTR(pgm_apparentpower)] = bufApparentPower;
+    // root[FPSTR(pgm_unk2)] = bufUnk2;
+    root["heap"] = ESP.getFreeHeap();
+
+    size_t len = measureJson(root);
+
+    char buf[len + 1];
+    serializeJson(root, buf, sizeof(buf));
+
+    // if (ws.hasClient(clientID))
+    // {
+    //   ws.textAll(buf);
+    // }
+
+    if (mqttClient.connected())
+    {
+      char bufFullTopic[64];
+      strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
+      strncat(bufFullTopic, "/meterreading/1s", sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
+      mqttClient.publish(
+          bufFullTopic, //topic
+          0,            //qos
+          0,            //retain
+          buf           //payload
+      );
+    }
   }
 
-  // digitalWrite(PIN_LED, ledOn);
+  static unsigned int count_avg;
+  static float voltage_avg;
+  static float ampere_avg;
+  static float watt_avg;
+  static float pstkwh_avg;
+
+  count_avg++;
+  voltage_avg = voltage_avg + Voltage;
+  ampere_avg = ampere_avg + Ampere;
+  watt_avg = watt_avg + Watt;
+  pstkwh_avg = pstkwh_avg + Pstkwh;
+
+  if (tick60sModbus)
+  {
+    tick60sModbus = false;
+
+    voltage_avg = voltage_avg / count_avg;
+    ampere_avg = ampere_avg / count_avg;
+    watt_avg = watt_avg / count_avg;
+    pstkwh_avg = pstkwh_avg / count_avg;
+
+    dtostrf(Voltage, 0, 1, bufVoltage); /* Voltage */
+    dtostrf(Ampere, 0, 2, bufAmpere);   /* Ampere */
+    dtostrf(Watt, 0, 1, bufWatt);       /* Wattage */
+    dtostrf(Pstkwh, 0, 2, bufPstkwh); /* Positive kWh */
+
+    StaticJsonDocument<512> root;
+    root[FPSTR(pgm_voltage)] = bufVoltage;
+    root[FPSTR(pgm_ampere)] = bufAmpere;
+    root[FPSTR(pgm_watt)] = bufWatt;
+    root[FPSTR(pgm_pstkwh)] = bufPstkwh;
+    root["heap"] = ESP.getFreeHeap();
+
+    size_t len = measureJson(root);
+
+    char buf[len + 1];
+    serializeJson(root, buf, sizeof(buf));
+
+    if (mqttClient.connected())
+    {
+      char bufFullTopic[64];
+      strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
+      strncat(bufFullTopic, "/meterreading/60s", sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
+      mqttClient.publish(
+          bufFullTopic, //topic
+          0,            //qos
+          0,            //retain
+          buf           //payload
+      );
+    }
+
+    voltage_avg = 0;
+    ampere_avg = 0;
+    watt_avg = 0;
+    pstkwh_avg = 0;
+    count_avg = 0;
+  }
+
+  ledOn = !ledOn;
+  digitalWrite(PIN_LED, true);
 
   // Serial.print("requests: ");
   // Serial.println(packets[PACKET1].requests);
@@ -446,7 +519,7 @@ void modbus_loop()
   //  modbus_construct(&packets[PACKET13], 3, READ_INPUT_REGISTERS, 545, 1, 23);  // read Day & Hour ??
   //  modbus_construct(&packets[PACKET14], 3, READ_INPUT_REGISTERS, 546, 1, 24);  // read Minute & Second
 
-  modbus_construct(&packets[PACKET1], 4, READ_HOLDING_REGISTERS, 1, 1, 1);   // read Present Voltage (Volt)
+  modbus_construct(&packets[PACKET1], 4, READ_HOLDING_REGISTERS, 1, 1, 1); // read Present Voltage (Volt)
   // modbus_construct(&packets[PACKET2], 4, READ_HOLDING_REGISTERS, 1, 1, 1);   // read Present Current (Ampere)
   // modbus_construct(&packets[PACKET3], 4, READ_HOLDING_REGISTERS, 1, 1, 2);   // read Present True Power (Watt or kW)
   // modbus_construct(&packets[PACKET4], 4, READ_HOLDING_REGISTERS, 1, 1, 3);   // read Present Reactive Power (VAr or kVAr)
@@ -796,8 +869,7 @@ void modbus_loop_DMM()
 {
   static bool ledOn = 0;
 
-  modbus_construct(&packets[PACKET1], 4, READ_HOLDING_REGISTERS, 0, 1, 0);   // read Present Voltage (Volt)
-
+  modbus_construct(&packets[PACKET1], 4, READ_HOLDING_REGISTERS, 0, 1, 0); // read Present Voltage (Volt)
 
   bool success = 0;
   static uint32_t numSuccessReq_old = 0;
@@ -830,9 +902,8 @@ void modbus_loop_DMM()
     return;
   }
 
-
-
-  if (!success) return;
+  if (!success)
+    return;
 
   ledOn = !ledOn;
   digitalWrite(2, ledOn);
@@ -844,11 +915,11 @@ void modbus_loop_DMM()
   temp = (unsigned long)regs[0];
   DMM = temp;
   static uint32_t DMM_old = 0;
-  if (DMM_old != DMM) {
+  if (DMM_old != DMM)
+  {
     DMM_old = DMM;
     float DMM_float;
-    DMM_float = DMM/2.0;
+    DMM_float = DMM / 2.0;
     DEBUGLOG("DMM: %.1f\r\n", DMM_float);
-  } 
-
+  }
 }

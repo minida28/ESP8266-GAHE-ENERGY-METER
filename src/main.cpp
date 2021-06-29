@@ -3,6 +3,10 @@
 
 // Coba pakai D1,D2,D5,D6 on NodeMcu
 
+
+
+#include <ESPAsyncWebServer.h>
+#include <SPIFFSEditor.h>
 #include "FSWebServerLib.h"
 #include "timehelper.h"
 // #include "config.h"
@@ -44,7 +48,7 @@ void setup()
 #endif
 
   DEBUGLOG("Mounting FS...\r\n");
-  if (!SPIFFS.begin())
+  if (!LittleFS.begin())
   {
     DEBUGLOG("Failed to mount file system\r\n");
     return;
@@ -63,7 +67,7 @@ void setup()
   // mqtt_setup();
 
   DEBUGLOG("Starting ESPHTTPServer...\r\n");
-  ESPHTTPServer.start(&SPIFFS);
+  ESPHTTPServer.start(&LittleFS);
 
   // Timesetup();
 
@@ -73,7 +77,7 @@ void setup()
   DEBUGLOG("Setup AsyncPING...\r\n");
   PingSetup();
   DEBUGLOG("Setup MQTT...\r\n");
-  // mqtt_setup();
+  mqtt_setup();
 
   // DEBUGLOG("RTC Time...\r\n");
   // RtcSetup();
@@ -174,7 +178,7 @@ void loop()
   // modbus_update();
 
   // dht_loop();
-  // mqtt_loop();
+  mqtt_loop();
 
   // TimeLoop();
 

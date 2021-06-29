@@ -1,5 +1,8 @@
 // #include <ESP8266WiFi.h>
 // #include <ESPAsyncTCP.h>
+
+// #define LittleFS LITTLEFS
+
 #include "FSWebServerLib.h"
 #include "modbus.h"
 #include "StreamString.h"
@@ -138,7 +141,7 @@ void onTimeout(void *arg, AsyncClient *client, uint32_t time)
 
 void ConstructThingspeak()
 {
-    File file = SPIFFS.open(PSTR("/thingspeak.json"), "r");
+    File file = LittleFS.open(PSTR("/thingspeak.json"), "r");
     if (!file)
     {
         DEBUGLOG("Failed to open config file\r\n");

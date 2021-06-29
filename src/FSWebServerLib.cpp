@@ -1035,6 +1035,7 @@ void AsyncFSWebServer::start(FS *fs)
   //char bufHostName[32];
   strlcpy(_config.hostname, bufPrefix, sizeof(_config.hostname) / sizeof(_config.hostname[0]));
   strncat(_config.hostname, bufChipId, sizeof(bufChipId) / sizeof(bufChipId[0]));
+  DEBUGLOG("Hostname: %s\r\n", _config.hostname);
 
   if (!load_config_network())
   {
