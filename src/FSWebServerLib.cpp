@@ -609,8 +609,9 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
     else if (data[0] == 't' && data[1] == ' ')
     {
       char *token = strtok((char *)&data[2], " ");
-
-      timestampReceivedFromWebGUI = (unsigned long)strtol(token, '\0', 10);
+      char *ptr;
+      // timestampReceivedFromWebGUI = (unsigned long)strtol(token, '\0', 10);
+      timestampReceivedFromWebGUI = (unsigned long)strtol(token, &ptr, 10);
 
       setDateTimeFromGUIFlag = true;
     }
@@ -1839,7 +1840,7 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
       }
       if (strncmp_P(name, pgm_dhcp, len) == 0)
       {
-        _config.dhcp = p->value();
+        _config.dhcp = p->value().c_str();
       }
       if (strncmp_P(name, pgm_static_ip, len) == 0)
       {
@@ -2090,11 +2091,11 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
       }
       if (strncmp_P(name, pgm_dst, len) == 0)
       {
-        _configTime.dst = p->value();
+        _configTime.dst = p->value().c_str();
       }
       if (strncmp_P(name, pgm_enablertc, len) == 0)
       {
-        _configTime.enablertc = p->value();
+        _configTime.enablertc = p->value().c_str();
       }
       if (strncmp_P(name, pgm_syncinterval, len) == 0)
       {
@@ -2102,7 +2103,7 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
       }
       if (strncmp_P(name, pgm_enablentp, len) == 0)
       {
-        _configTime.enablentp = p->value();
+        _configTime.enablentp = p->value().c_str();
       }
       if (strncmp_P(name, pgm_ntpserver_0, len) == 0)
       {
