@@ -42,7 +42,7 @@
 
 #if defined(SOFTWARESERIAL)
 #include "SoftwareSerial.h"
-uint8_t Rx = 14; //WEMOS_PIN_D5;
+uint8_t Rx = 14; // WEMOS_PIN_D5;
 uint8_t Tx = 12; // WEMOS_PIN_D6;
 #endif
 
@@ -75,11 +75,11 @@ Packet packets[TOTAL_NO_OF_PACKETS];
 // Masters register array
 unsigned int regs[TOTAL_NO_OF_REGISTERS];
 
-//unsigned int readRegs[2];
+// unsigned int readRegs[2];
 
-//unsigned long currentMillis;
-//long previousMillis = 0;
-//long interval = 1000;
+// unsigned long currentMillis;
+// long previousMillis = 0;
+// long interval = 1000;
 
 uint32_t oldSecond;
 
@@ -196,8 +196,8 @@ void modbus_setup()
   // modbus_construct(&packets[PACKET14], 3, READ_INPUT_REGISTERS, 546, 1, 24); // read Minute & Second
 
   // Initialize the Modbus Finite State Machine
-  //modbus_configure(&Serial, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
-  //modbus_configure(&Serial1, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
+  // modbus_configure(&Serial, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
+  // modbus_configure(&Serial1, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
 #if defined(SOFTWARESERIAL)
   modbus_configure(&swSer, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
 #else
@@ -285,8 +285,6 @@ void modbus_loop_1()
     return;
   }
 
-
-
   float Voltage;
   float Ampere;
   float Watt;
@@ -307,12 +305,12 @@ void modbus_loop_1()
   Voltage = *(float *)p;
   Voltage = Voltage - 1.9;
 
-  //float Ampere;
+  // float Ampere;
   unsigned long tempCurrent = (unsigned long)regs[2] << 16 | regs[3];
   unsigned long *pCurrent = &tempCurrent;
   Ampere = *(float *)pCurrent;
 
-  //float Watt;
+  // float Watt;
   temp = (unsigned long)regs[4] << 16 | regs[5];
   Watt = *(float *)p;
 
@@ -324,7 +322,7 @@ void modbus_loop_1()
   // temp = (unsigned long)regs[8] << 16 | regs[9];
   // Frequency = *(float *)p;
 
-  //float Pstkwh;
+  // float Pstkwh;
   temp = (unsigned long)regs[6] << 16 | regs[7];
   Pstkwh = *(float *)p;
 
@@ -372,16 +370,16 @@ void modbus_loop_1()
 
     StaticJsonDocument<512> root;
 
-    root[FPSTR(pgm_voltage)] = bufVoltage;
-    root[FPSTR(pgm_ampere)] = bufAmpere;
-    root[FPSTR(pgm_watt)] = bufWatt;
-    root[FPSTR(pgm_var)] = bufVar;
-    root[FPSTR(pgm_frequency)] = bufFrequency;
-    root[FPSTR(pgm_pstkwh)] = bufPstkwh;
-    root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
-    root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
-    root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
-    root[FPSTR(pgm_apparentpower)] = bufApparentPower;
+    root[FPSTR(pgm_voltage)] = Voltage;
+    root[FPSTR(pgm_ampere)] = Ampere;
+    root[FPSTR(pgm_watt)] = Watt;
+    // root[FPSTR(pgm_var)] = bufVar;
+    // root[FPSTR(pgm_frequency)] = bufFrequency;
+    root[FPSTR(pgm_pstkwh)] = Pstkwh;
+    // root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
+    // root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
+    // root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
+    // root[FPSTR(pgm_apparentpower)] = bufApparentPower;
     // root[FPSTR(pgm_unk2)] = bufUnk2;
     root["heap"] = ESP.getFreeHeap();
 
@@ -401,10 +399,10 @@ void modbus_loop_1()
       strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
       strncat(bufFullTopic, "/meterreading/1s", sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
       mqttClient.publish(
-          bufFullTopic, //topic
-          0,            //qos
-          0,            //retain
-          buf           //payload
+          bufFullTopic, // topic
+          0,            // qos
+          0,            // retain
+          buf           // payload
       );
     }
   }
@@ -433,13 +431,13 @@ void modbus_loop_1()
     dtostrf(Voltage, 0, 1, bufVoltage); /* Voltage */
     dtostrf(Ampere, 0, 2, bufAmpere);   /* Ampere */
     dtostrf(Watt, 0, 1, bufWatt);       /* Wattage */
-    dtostrf(Pstkwh, 0, 2, bufPstkwh); /* Positive kWh */
+    dtostrf(Pstkwh, 0, 2, bufPstkwh);   /* Positive kWh */
 
     StaticJsonDocument<512> root;
-    root[FPSTR(pgm_voltage)] = bufVoltage;
-    root[FPSTR(pgm_ampere)] = bufAmpere;
-    root[FPSTR(pgm_watt)] = bufWatt;
-    root[FPSTR(pgm_pstkwh)] = bufPstkwh;
+    root[FPSTR(pgm_voltage)] = Voltage;
+    root[FPSTR(pgm_ampere)] = Ampere;
+    root[FPSTR(pgm_watt)] = Watt;
+    root[FPSTR(pgm_pstkwh)] = Pstkwh;
     root["heap"] = ESP.getFreeHeap();
 
     size_t len = measureJson(root);
@@ -453,10 +451,10 @@ void modbus_loop_1()
       strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
       strncat(bufFullTopic, "/meterreading/60s", sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
       mqttClient.publish(
-          bufFullTopic, //topic
-          0,            //qos
-          0,            //retain
-          buf           //payload
+          bufFullTopic, // topic
+          0,            // qos
+          0,            // retain
+          buf           // payload
       );
     }
 
@@ -534,13 +532,13 @@ void modbus_loop()
   // modbus_construct(&packets[PACKET13], 4, READ_HOLDING_REGISTERS, 1, 1, 13); // read Day & Hour ??
   // modbus_construct(&packets[PACKET14], 4, READ_HOLDING_REGISTERS, 1, 1, 14); // read Minute & Second
 
-  //update values if new request based on Watt request [PACKET3]
-  // static uint32_t numSuccessReq_old = 0;
-  // uint32_t numSuccessReq = packets[PACKET3].successful_requests;
-  // if (numSuccessReq != numSuccessReq_old)
-  // {
-  //   // update old values
-  //   numSuccessReq_old = numSuccessReq;
+  // update values if new request based on Watt request [PACKET3]
+  //  static uint32_t numSuccessReq_old = 0;
+  //  uint32_t numSuccessReq = packets[PACKET3].successful_requests;
+  //  if (numSuccessReq != numSuccessReq_old)
+  //  {
+  //    // update old values
+  //    numSuccessReq_old = numSuccessReq;
 
   //   // // convert packet status to char array for later use
   //   // dtostrf(packets[PACKET3].requests, 0, 0, bufRequestsPACKET3);
@@ -560,10 +558,10 @@ void modbus_loop()
   //     packets[PACKET3].successful_requests != oldrequestPACKET3 &&
   //     packets[PACKET6].successful_requests != oldrequestPACKET6)
   {
-    //update old values
-    // oldrequestPACKET2 = packets[PACKET2].successful_requests;
-    // oldrequestPACKET3 = packets[PACKET3].successful_requests;
-    // oldrequestPACKET6 = packets[PACKET6].successful_requests;
+    // update old values
+    //  oldrequestPACKET2 = packets[PACKET2].successful_requests;
+    //  oldrequestPACKET3 = packets[PACKET3].successful_requests;
+    //  oldrequestPACKET6 = packets[PACKET6].successful_requests;
 
     float Voltage;
     float Ampere;
@@ -580,47 +578,47 @@ void modbus_loop()
     unsigned long temp;
     unsigned long *p = &temp;
 
-    //float Voltage;
+    // float Voltage;
     temp = (unsigned long)regs[0] << 16 | regs[1];
     Voltage = *(float *)p;
 
-    //float Ampere;
+    // float Ampere;
     temp = (unsigned long)regs[2] << 16 | regs[3];
     Ampere = *(float *)p;
 
-    //float Watt;
+    // float Watt;
     temp = (unsigned long)regs[4] << 16 | regs[5];
     Watt = *(float *)p;
 
-    //float Var;
+    // float Var;
     temp = (unsigned long)regs[6] << 16 | regs[7];
     Var = *(float *)p;
 
-    //float Frequency;
+    // float Frequency;
     temp = (unsigned long)regs[8] << 16 | regs[9];
     Frequency = *(float *)p;
 
-    //float Pstkwh;
+    // float Pstkwh;
     temp = (unsigned long)regs[10] << 16 | regs[11];
     Pstkwh = *(float *)p;
 
-    //float Pstkvarh;
+    // float Pstkvarh;
     temp = (unsigned long)regs[12] << 16 | regs[13];
     Pstkvarh = *(float *)p;
 
-    //float Ngtkvarh;
+    // float Ngtkvarh;
     temp = (unsigned long)regs[14] << 16 | regs[15];
     Ngtkvarh = *(float *)p;
 
-    //float PowerFactor;
+    // float PowerFactor;
     temp = (unsigned long)regs[16] << 16 | regs[17];
     PowerFactor = *(float *)p;
 
-    //float ApparentPower;
+    // float ApparentPower;
     temp = (unsigned long)regs[18] << 16 | regs[19];
     ApparentPower = *(float *)p;
 
-    //float Unk2;
+    // float Unk2;
     temp = (unsigned long)regs[20] << 16 | regs[21];
     Unk2 = *(float *)p;
 
@@ -686,7 +684,7 @@ void modbus_loop()
 
   // return;
 
-  //process only if websocket has client or MQTT is connected
+  // process only if websocket has client or MQTT is connected
   if (WiFi.status() == WL_CONNECTED || (ws.hasClient(clientID) || mqttClient.connected()))
   {
   }
