@@ -65,7 +65,5 @@ extern void modbus_setup();
 // Call every time around loop()
 // -------------------------------------------------------------------
 extern void modbus_loop();
-extern void modbus_loop_1();
-
 
 #endif
