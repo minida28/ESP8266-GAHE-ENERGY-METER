@@ -1,5 +1,5 @@
-// ArduinoJson - arduinojson.org
-// Copyright Benoit Blanchon 2014-2021
+// ArduinoJson - https://arduinojson.org
+// Copyright © 2014-2022, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -7,9 +7,9 @@
 #include "declval.hpp"
 
 #ifdef _MSC_VER
-#pragma warning(push)
+#  pragma warning(push)
 // conversion from 'T' to 'To', possible loss of data
-#pragma warning(disable : 4244)
+#  pragma warning(disable : 4244)
 #endif
 
 // clang-format off
@@ -37,7 +37,7 @@ struct is_convertible {
 }  // namespace ARDUINOJSON_NAMESPACE
 
 #ifdef _MSC_VER
-#pragma warning(pop)
+#  pragma warning(pop)
 #endif
 
 // clang-format off

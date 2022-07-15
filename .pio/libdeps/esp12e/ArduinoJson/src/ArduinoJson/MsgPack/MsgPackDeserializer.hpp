@@ -1,5 +1,5 @@
-// ArduinoJson - arduinojson.org
-// Copyright Benoit Blanchon 2014-2021
+// ArduinoJson - https://arduinojson.org
+// Copyright © 2014-2022, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -27,26 +27,18 @@ class MsgPackDeserializer {
   template <typename TFilter>
   DeserializationError parse(VariantData &variant, TFilter filter,
                              NestingLimit nestingLimit) {
-    parseVariant(variant, filter, nestingLimit);
+    parseVariant(&variant, filter, nestingLimit);
     return _foundSomething ? _error : DeserializationError::EmptyInput;
   }
 
  private:
-  // Prevent VS warning "assignment operator could not be generated"
-  MsgPackDeserializer &operator=(const MsgPackDeserializer &);
-
   bool invalidInput() {
     _error = DeserializationError::InvalidInput;
     return false;
   }
 
-  bool notSupported() {
-    _error = DeserializationError::NotSupported;
-    return false;
-  }
-
   template <typename TFilter>
-  bool parseVariant(VariantData &variant, TFilter filter,
+  bool parseVariant(VariantData *variant, TFilter filter,
                     NestingLimit nestingLimit) {
     uint8_t code = 0;  // TODO: why do we need to initialize this variable?
     if (!readByte(code))
@@ -55,6 +47,11 @@ class MsgPackDeserializer {
     _foundSomething = true;
 
     bool allowValue = filter.allowValue();
+
+    if (allowValue) {
+      // callers pass a null pointer only when value must be ignored
+      ARDUINOJSON_ASSERT(variant != 0);
+    }
 
     switch (code) {
       case 0xc0:
@@ -66,49 +63,31 @@ class MsgPackDeserializer {
 
       case 0xc2:
         if (allowValue)
-          variant.setBoolean(false);
+          variant->setBoolean(false);
         return true;
 
       case 0xc3:
         if (allowValue)
-          variant.setBoolean(true);
+          variant->setBoolean(true);
         return true;
 
-      case 0xc4:  // bin 8
-        if (allowValue)
-          return notSupported();
-        else
-          return skipString<uint8_t>();
+      case 0xc4:  // bin 8 (not supported)
+        return skipString<uint8_t>();
 
-      case 0xc5:  // bin 16
-        if (allowValue)
-          return notSupported();
-        else
-          return skipString<uint16_t>();
+      case 0xc5:  // bin 16 (not supported)
+        return skipString<uint16_t>();
 
-      case 0xc6:  // bin 32
-        if (allowValue)
-          return notSupported();
-        else
-          return skipString<uint32_t>();
+      case 0xc6:  // bin 32 (not supported)
+        return skipString<uint32_t>();
 
-      case 0xc7:  // ext 8
-        if (allowValue)
-          return notSupported();
-        else
-          return skipExt<uint8_t>();
+      case 0xc7:  // ext 8 (not supported)
+        return skipExt<uint8_t>();
 
-      case 0xc8:  // ext 16
-        if (allowValue)
-          return notSupported();
-        else
-          return skipExt<uint16_t>();
+      case 0xc8:  // ext 16 (not supported)
+        return skipExt<uint16_t>();
 
-      case 0xc9:  // ext 32
-        if (allowValue)
-          return notSupported();
-        else
-          return skipExt<uint32_t>();
+      case 0xc9:  // ext 32 (not supported)
+        return skipExt<uint32_t>();
 
       case 0xca:
         if (allowValue)
@@ -141,14 +120,14 @@ class MsgPackDeserializer {
           return skipBytes(4);
 
       case 0xcf:
-        if (allowValue)
 #if ARDUINOJSON_USE_LONG_LONG
+        if (allowValue)
           return readInteger<uint64_t>(variant);
-#else
-          return notSupported();
-#endif
         else
           return skipBytes(8);
+#else
+        return skipBytes(8);  // not supported
+#endif
 
       case 0xd0:
         if (allowValue)
@@ -169,44 +148,29 @@ class MsgPackDeserializer {
           return skipBytes(4);
 
       case 0xd3:
-        if (allowValue)
 #if ARDUINOJSON_USE_LONG_LONG
+        if (allowValue)
           return readInteger<int64_t>(variant);
+        else
+          return skipBytes(8);  // not supported
 #else
-          return notSupported();
+        return skipBytes(8);
 #endif
-        else
-          return skipBytes(8);
 
-      case 0xd4:  // fixext 1
-        if (allowValue)
-          return notSupported();
-        else
-          return skipBytes(2);
+      case 0xd4:  // fixext 1 (not supported)
+        return skipBytes(2);
 
-      case 0xd5:  // fixext 2
-        if (allowValue)
-          return notSupported();
-        else
-          return skipBytes(3);
+      case 0xd5:  // fixext 2 (not supported)
+        return skipBytes(3);
 
-      case 0xd6:  // fixext 4
-        if (allowValue)
-          return notSupported();
-        else
-          return skipBytes(5);
+      case 0xd6:  // fixext 4 (not supported)
+        return skipBytes(5);
 
-      case 0xd7:  // fixext 8
-        if (allowValue)
-          return notSupported();
-        else
-          return skipBytes(9);
+      case 0xd7:  // fixext 8 (not supported)
+        return skipBytes(9);
 
-      case 0xd8:  // fixext 16
-        if (allowValue)
-          return notSupported();
-        else
-          return skipBytes(17);
+      case 0xd8:  // fixext 16 (not supported)
+        return skipBytes(17);
 
       case 0xd9:
         if (allowValue)
@@ -255,7 +219,7 @@ class MsgPackDeserializer {
     }
 
     if (allowValue)
-      variant.setInteger(static_cast<int8_t>(code));
+      variant->setInteger(static_cast<int8_t>(code));
 
     return true;
   }
@@ -301,39 +265,39 @@ class MsgPackDeserializer {
   }
 
   template <typename T>
-  bool readInteger(VariantData &variant) {
+  bool readInteger(VariantData *variant) {
     T value;
     if (!readInteger(value))
       return false;
-    variant.setInteger(value);
+    variant->setInteger(value);
     return true;
   }
 
   template <typename T>
   typename enable_if<sizeof(T) == 4, bool>::type readFloat(
-      VariantData &variant) {
+      VariantData *variant) {
     T value;
     if (!readBytes(value))
       return false;
     fixEndianess(value);
-    variant.setFloat(value);
+    variant->setFloat(value);
     return true;
   }
 
   template <typename T>
   typename enable_if<sizeof(T) == 8, bool>::type readDouble(
-      VariantData &variant) {
+      VariantData *variant) {
     T value;
     if (!readBytes(value))
       return false;
     fixEndianess(value);
-    variant.setFloat(value);
+    variant->setFloat(value);
     return true;
   }
 
   template <typename T>
   typename enable_if<sizeof(T) == 4, bool>::type readDouble(
-      VariantData &variant) {
+      VariantData *variant) {
     uint8_t i[8];  // input is 8 bytes
     T value;       // output is 4 bytes
     uint8_t *o = reinterpret_cast<uint8_t *>(&value);
@@ -341,12 +305,12 @@ class MsgPackDeserializer {
       return false;
     doubleToFloat(i, o);
     fixEndianess(value);
-    variant.setFloat(value);
+    variant->setFloat(value);
     return true;
   }
 
   template <typename T>
-  bool readString(VariantData &variant) {
+  bool readString(VariantData *variant) {
     T size;
     if (!readInteger(size))
       return false;
@@ -369,11 +333,10 @@ class MsgPackDeserializer {
     return skipBytes(size);
   }
 
-  bool readString(VariantData &variant, size_t n) {
+  bool readString(VariantData *variant, size_t n) {
     if (!readString(n))
       return false;
-    variant.setStringPointer(_stringStorage.save(),
-                             typename TStringStorage::storage_policy());
+    variant->setString(_stringStorage.save());
     return true;
   }
 
@@ -385,7 +348,6 @@ class MsgPackDeserializer {
         return false;
       _stringStorage.append(static_cast<char>(c));
     }
-    _stringStorage.append('\0');
     if (!_stringStorage.isValid()) {
       _error = DeserializationError::NoMemory;
       return false;
@@ -395,7 +357,7 @@ class MsgPackDeserializer {
   }
 
   template <typename TSize, typename TFilter>
-  bool readArray(VariantData &variant, TFilter filter,
+  bool readArray(VariantData *variant, TFilter filter,
                  NestingLimit nestingLimit) {
     TSize size;
     if (!readInteger(size))
@@ -404,7 +366,7 @@ class MsgPackDeserializer {
   }
 
   template <typename TFilter>
-  bool readArray(VariantData &variant, size_t n, TFilter filter,
+  bool readArray(VariantData *variant, size_t n, TFilter filter,
                  NestingLimit nestingLimit) {
     if (nestingLimit.reached()) {
       _error = DeserializationError::TooDeep;
@@ -413,7 +375,7 @@ class MsgPackDeserializer {
 
     bool allowArray = filter.allowArray();
 
-    CollectionData *array = allowArray ? &variant.toArray() : 0;
+    CollectionData *array = allowArray ? &variant->toArray() : 0;
 
     TFilter memberFilter = filter[0U];
 
@@ -430,7 +392,7 @@ class MsgPackDeserializer {
         value = 0;
       }
 
-      if (!parseVariant(*value, memberFilter, nestingLimit.decrement()))
+      if (!parseVariant(value, memberFilter, nestingLimit.decrement()))
         return false;
     }
 
@@ -438,7 +400,7 @@ class MsgPackDeserializer {
   }
 
   template <typename TSize, typename TFilter>
-  bool readObject(VariantData &variant, TFilter filter,
+  bool readObject(VariantData *variant, TFilter filter,
                   NestingLimit nestingLimit) {
     TSize size;
     if (!readInteger(size))
@@ -447,24 +409,26 @@ class MsgPackDeserializer {
   }
 
   template <typename TFilter>
-  bool readObject(VariantData &variant, size_t n, TFilter filter,
+  bool readObject(VariantData *variant, size_t n, TFilter filter,
                   NestingLimit nestingLimit) {
     if (nestingLimit.reached()) {
       _error = DeserializationError::TooDeep;
       return false;
     }
 
-    CollectionData *object = filter.allowObject() ? &variant.toObject() : 0;
+    CollectionData *object = filter.allowObject() ? &variant->toObject() : 0;
 
     for (; n; --n) {
       if (!readKey())
         return false;
 
-      const char *key = _stringStorage.c_str();
-      TFilter memberFilter = filter[key];
+      String key = _stringStorage.str();
+      TFilter memberFilter = filter[key.c_str()];
       VariantData *member;
 
       if (memberFilter.allow()) {
+        ARDUINOJSON_ASSERT(object);
+
         // Save key in memory pool.
         // This MUST be done before adding the slot.
         key = _stringStorage.save();
@@ -475,14 +439,14 @@ class MsgPackDeserializer {
           return false;
         }
 
-        slot->setKey(key, typename TStringStorage::storage_policy());
+        slot->setKey(key);
 
         member = slot->data();
       } else {
         member = 0;
       }
 
-      if (!parseVariant(*member, memberFilter, nestingLimit.decrement()))
+      if (!parseVariant(member, memberFilter, nestingLimit.decrement()))
         return false;
     }
 
@@ -508,7 +472,7 @@ class MsgPackDeserializer {
         return readString<uint32_t>();
 
       default:
-        return notSupported();
+        return invalidInput();
     }
   }
 
@@ -517,7 +481,7 @@ class MsgPackDeserializer {
     T size;
     if (!readInteger(size))
       return false;
-    return skipBytes(size + 1);
+    return skipBytes(size + 1U);
   }
 
   MemoryPool *_pool;

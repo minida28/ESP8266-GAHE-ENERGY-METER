@@ -46,6 +46,8 @@
 #define DEBUGLOGLN(...)
 #endif
 
+char timezonestring[32] = "WIB-7";
+
 bool tick1000ms = false;
 bool tick3000ms = false;
 bool state500ms = false;
@@ -471,16 +473,16 @@ void TimeSetup()
   settimeofday_cb(time_is_set);
 
   // configTZ(TZ_Asia_Jakarta);
-  // configTZ(_configLocation.timezonestring);
+  // configTZ(timezonestring);
   // configTZ("WIB-7");
-  // setenv("TZ", _configLocation.timezonestring, 1 /*overwrite*/);
+  // setenv("TZ", timezonestring, 1 /*overwrite*/);
   // tzset();
-  configTime(_configLocation.timezonestring, _configTime.ntpserver_0, _configTime.ntpserver_1, _configTime.ntpserver_2);
+  configTime(timezonestring, _configTime.ntpserver_0, _configTime.ntpserver_1, _configTime.ntpserver_2);
   yield();
 
   if (_configTime.enablentp)
   {
-    configTime(_configLocation.timezonestring, _configTime.ntpserver_0, _configTime.ntpserver_1, _configTime.ntpserver_2);
+    configTime(timezonestring, _configTime.ntpserver_0, _configTime.ntpserver_1, _configTime.ntpserver_2);
     yield();
   }
 

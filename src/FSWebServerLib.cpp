@@ -176,7 +176,7 @@ void runAsyncClientEmoncms()
                    NULL);
 
     //construct HTTP request for EmonCMS
-    File file = SPIFFS.open("/emoncms.json", "r");
+    File file = MYFS.open("/emoncms.json", "r");
     if (!file)
     {
       DEBUGLOG("Failed to open config file\r\n");
@@ -369,7 +369,7 @@ void runAsyncClientThingspeak()
     //Construct HTTP request to THINGSPEAK
     //"POST /update?field4=40&status=\"Horeeee bisa lagi\" HTTP/1.1\r\nHost: api.thingspeak.com\r\nX-THINGSPEAKAPIKEY:XJP1DKEH9OGVBGSX\r\n\r\n");
 
-    File file = SPIFFS.open(PSTR("/thingspeak.json"), "r");
+    File file = MYFS.open(PSTR("/thingspeak.json"), "r");
     if (!file)
     {
       DEBUGLOG("Failed to open config file\r\n");
@@ -587,7 +587,7 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
         //******************************
         else if (strcmp_P(saveconfig, pgm_configpagetime) == 0)
         {
-          File file = SPIFFS.open(FPSTR(pgm_configfiletime), "w");
+          File file = MYFS.open(FPSTR(pgm_configfiletime), "w");
 
           if (!file)
           {
@@ -639,7 +639,7 @@ bool save_config_time()
   //json["led"] = config.connectionLed;
 
   //TODO add AP data to html
-  File file = SPIFFS.open(FPSTR(pgm_configfiletime), "w");
+  File file = MYFS.open(FPSTR(pgm_configfiletime), "w");
 
 #ifndef RELEASEASYNCWS
   serializeJsonPretty(json, DEBUGPORT);
@@ -669,7 +669,7 @@ void sendDateTime(uint8_t mode)
   root["min"] = dt.Minute();
   root["sec"] = dt.Second();
   // root["tz"] = TimezoneFloat();
-  root["tzStr"] = _configLocation.timezonestring;
+  root["tzStr"] = timezonestring;
   root["utc"] = now;
   root["local"] = localTime;
 
@@ -858,9 +858,9 @@ bool save_system_info()
   // const char* pathtofile = PSTR(pgm_filesystemoverview);
 
   File file;
-  if (!SPIFFS.exists(FPSTR(pgm_systeminfofile)))
+  if (!MYFS.exists(FPSTR(pgm_systeminfofile)))
   {
-    file = SPIFFS.open(FPSTR(pgm_systeminfofile), "w");
+    file = MYFS.open(FPSTR(pgm_systeminfofile), "w");
     if (!file)
     {
       DEBUGLOG("Failed to open config file for writing\r\n");
@@ -873,7 +873,7 @@ bool save_system_info()
     file.close();
   }
   //get existing json file
-  file = SPIFFS.open(FPSTR(pgm_systeminfofile), "w");
+  file = MYFS.open(FPSTR(pgm_systeminfofile), "w");
   if (!file)
   {
     DEBUGLOG("Failed to open config file");
@@ -932,7 +932,7 @@ bool save_system_info()
 
   StaticJsonDocument<1024> root;
 
-  SPIFFS.info(fs_info);
+  MYFS.info(fs_info);
 
   root[FPSTR(pgm_totalbytes)] = fs_info.totalBytes;
   root[FPSTR(pgm_usedbytes)] = fs_info.usedBytes;
@@ -969,26 +969,50 @@ bool save_system_info()
 
 void AsyncFSWebServer::start(FS *fs)
 {
+
+  _fs = fs;
+
   // -------------------------------------------------------------------
   // Mount File system
   // -------------------------------------------------------------------
   DEBUGLOG("Mounting FS...\r\n");
 
-  if (!SPIFFS.begin())
-  // if (false)
-  {
-    DEBUGLOG("Failed to mount file system\r\n");
-    return;
-  }
-  else
-  {
-    // ftpSrv.begin("esp8266","esp8266");
-  }
 
-  _fs = fs;
 
-  if (!_fs) // If SPIFFS is not started
-    _fs->begin();
+// FS
+#ifdef USE_FatFS
+  if (!_fs) { // If MYFS is not started
+    if (_fs->begin(false, "/ffat", 3))
+    // if (false)
+    {
+      DEBUGLOG("Failed to mount file system\r\n");
+      return;
+    }
+    else
+    {
+      // ftpSrv.begin("esp8266","esp8266");
+    }
+  }
+#else
+  if (!_fs) { // If MYFS is not started
+    if (!_fs->begin())
+    // if (false)
+    {
+      DEBUGLOG("Failed to mount file system\r\n");
+      return;
+    }
+    else
+    {
+      // ftpSrv.begin("esp8266","esp8266");
+    }
+  }
+#endif
+
+  // _fs = fs;
+
+  // if (!_fs) // If MYFS is not started
+  //   _fs->begin();
+
 #ifndef RELEASE
   { // List files
     Dir dir = _fs->openDir("/");
@@ -1868,14 +1892,14 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
     request->send(200, PSTR("text/plain"), PSTR("OK"));
     return;
   }
-  request->send(SPIFFS, request->url());
+  request->send(MYFS, request->url());
 }
 
 void AsyncFSWebServer::send_classic_xml_page(AsyncWebServerRequest *request)
 {
   uint32_t heap = ESP.getFreeHeap();
 
-  File paramXmlFile = SPIFFS.open(PARAMETER_XML_FILE, "r");
+  File paramXmlFile = MYFS.open(PARAMETER_XML_FILE, "r");
   if (!paramXmlFile)
   {
     DEBUGLOG("Failed to open config file\r\n");
@@ -1984,7 +2008,7 @@ bool AsyncFSWebServer::save_config_time()
   json[FPSTR(pgm_ntpserver_1)] = _configTime.ntpserver_1;
   json[FPSTR(pgm_ntpserver_2)] = _configTime.ntpserver_2;
 
-  File file = SPIFFS.open(FPSTR(pgm_configfiletime), "w");
+  File file = MYFS.open(FPSTR(pgm_configfiletime), "w");
 
   if (!file)
   {
@@ -2009,7 +2033,7 @@ bool AsyncFSWebServer::load_config_time()
 {
   DEBUGLOG("\r\n%s\r\n", __PRETTY_FUNCTION__);
 
-  File fileTime = SPIFFS.open(FPSTR(pgm_configfiletime), "r");
+  File fileTime = MYFS.open(FPSTR(pgm_configfiletime), "r");
   if (!fileTime)
   {
     DEBUGLOG("Failed to open config file\n");
@@ -2131,7 +2155,7 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
     return;
   }
 
-  request->send(SPIFFS, request->url());
+  request->send(MYFS, request->url());
 }
 
 void AsyncFSWebServer::restart_esp(AsyncWebServerRequest *request)
@@ -2141,7 +2165,7 @@ void AsyncFSWebServer::restart_esp(AsyncWebServerRequest *request)
   // mqttClient.disconnect();
   evs.close();
   ws.closeAll();
-  _fs->end(); // SPIFFS.end();
+  _fs->end(); // MYFS.end();
   // ESP.restart();
 
   espRestartTimer.once(3, esp_restart);
@@ -2196,7 +2220,7 @@ void AsyncFSWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *re
 
     saveHTTPAuth();
   }
-  request->send(SPIFFS, request->url());
+  request->send(MYFS, request->url());
 
   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 }
@@ -2292,7 +2316,7 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
   static long totalSize = 0;
   if (!index)
   { //UPLOAD_FILE_START
-    SPIFFS.end();
+    MYFS.end();
     Update.runAsync(true);
     DEBUGLOG("Update start: %s\r\n", filename.c_str());
     // uint32_t maxSketchSpace = ESP.getSketchSize();
@@ -2344,7 +2368,7 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
 // {
 //   DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
-//   File configFile = SPIFFS.open(DESCRIPTION_XML_FILE, "r");
+//   File configFile = MYFS.open(DESCRIPTION_XML_FILE, "r");
 //   if (!configFile)
 //   {
 //     DEBUGLOG("Failed to open config file\r\n");
@@ -2533,7 +2557,7 @@ void AsyncFSWebServer::serverInit()
   on(PSTR("/admin"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
-    request->send(SPIFFS, PSTR("/admin.html"));
+    request->send(MYFS, PSTR("/admin.html"));
   });
   on(PSTR("/system.html"), [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
@@ -2554,7 +2578,7 @@ void AsyncFSWebServer::serverInit()
   on(PSTR("/update"), HTTP_GET, [this](AsyncWebServerRequest *request) {
     if (!this->checkAuth(request))
       return request->requestAuthentication();
-    request->send(SPIFFS, PSTR("/update.html"));
+    request->send(MYFS, PSTR("/update.html"));
   });
   on(
       PSTR("/update"), HTTP_POST, [this](AsyncWebServerRequest *request) {
@@ -2633,7 +2657,7 @@ void AsyncFSWebServer::serverInit()
   // });
 
   //called when the url is not defined here
-  //use it to load content from SPIFFS
+  //use it to load content from MYFS
   onNotFound([this](AsyncWebServerRequest *request) {
     DEBUGLOG("Not found: %s\r\n", request->url().c_str());
 
@@ -2772,10 +2796,13 @@ void AsyncFSWebServer::serverInit()
     request->send(response);
   });
 
-  addHandler(new SPIFFSEditor());
+  // addHandler(new MYFSEditor());
+  const char *http_username = "";
+  const char *http_password = "";
+  addHandler(new SPIFFSEditor(http_username, http_password, MYFS));
 
   //index file
-  serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+  serveStatic("/", MYFS, "/").setDefaultFile("index.html");
 
   onFileUpload([this](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final) {
     if (!index)

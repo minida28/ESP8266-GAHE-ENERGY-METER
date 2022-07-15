@@ -155,7 +155,6 @@ void Ticking60s()
 
 void modbus_setup()
 {
-
   ticker1000msModbus.attach(1, Ticking1000ms);
   ticker60sModbus.attach(60, Ticking60s);
 
