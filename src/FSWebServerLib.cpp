@@ -64,381 +64,7 @@ int wifiMode = WIFI_AP;
 // How to use the async client?
 // https://github.com/me-no-dev/ESPAsyncTCP/issues/18
 
-static AsyncClient *aClient = NULL;
-static AsyncClient *bClient = NULL;
 
-void runAsyncClientEmoncms()
-{
-  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
-  if (aClient) //client already exists
-  {
-    // return;
-
-    if (DEBUGVIAWS)
-    {
-      ws.textAll(PSTR("EmonCMS client already exists, closing the client...\r\n"));
-    }
-
-    aClient->close(true);
-    AsyncClient *client = aClient;
-    aClient = NULL;
-    delete client;
-  }
-
-  aClient = new AsyncClient();
-  if (!aClient) //could not allocate client
-    return;
-
-  aClient->onError([](void *arg, AsyncClient *client, err_t error) {
-    DEBUGLOG("Connect Error\r\n");
-    aClient = NULL;
-    delete client;
-  },
-                   NULL);
-
-  aClient->onConnect([](void *arg, AsyncClient *client) {
-    DEBUGLOG("Connected\r\n");
-    if (DEBUGVIAWS)
-    {
-      ws.textAll(PSTR("EmonCMS connected\r\n"));
-    }
-    aClient->onError(NULL, NULL);
-
-    client->onDisconnect([](void *arg, AsyncClient *c) {
-      DEBUGLOG("\nDisconnected\r\n");
-      if (DEBUGVIAWS)
-      {
-        ws.textAll(PSTR("EmonCMS Disconnected\r\n"));
-      }
-      aClient = NULL;
-      delete c;
-    },
-                         NULL);
-
-    client->onData([](void *arg, AsyncClient *c, void *data, size_t len) {
-      DEBUGLOG("\r\nData: ");
-      DEBUGLOG("%d", len);
-      // uint8_t *d = (uint8_t *)data;
-      //  for (size_t i = 0; i < len; i++) {
-      //    Serial.write(d[i]);
-      //  }
-
-      // if (DEBUGVIAWS)
-      // {
-      //   char receivedData[len + 1];
-
-      //   uint8_t *d = (uint8_t *)data;
-      //   for (size_t i = 0; i < len; i++)
-      //   {
-      //     receivedData[i] = (char)d[i];
-      //   }
-      //   receivedData[len] = '\0';
-
-      //   char buf[32];
-      //   sprintf_P(buf, PSTR("EmonCMS onData, len=%u\r\n"), len);
-      //   ws.textAll(buf);
-      //   ws.textAll("\r\n");
-      //   ws.textAll(receivedData);
-      //   ws.textAll("\r\n");
-      // }
-
-      char temp[len + 1];
-
-      uint8_t *d = (uint8_t *)data;
-      for (size_t i = 0; i < len; i++)
-      {
-        static int j = 0;
-        char z = (char)d[i];
-        temp[j] = z;
-        j++;
-        if (z == '\n')
-        {
-          temp[j + 1] = '\0';
-          j = 0;
-          char status[] = "HTTP/1.1 200 OK";
-          int len = strlen(status);
-          if (strncmp(temp, status, len) == 0)
-          {
-            if (DEBUGVIAWS)
-              ws.textAll(status);
-
-            aClient->close(true);
-
-            // AsyncClient *client = aClient;
-            // aClient = NULL;
-            // delete c;
-
-            break;
-          }
-        }
-      }
-    },
-                   NULL);
-
-    //construct HTTP request for EmonCMS
-    File file = MYFS.open("/emoncms.json", "r");
-    if (!file)
-    {
-      DEBUGLOG("Failed to open config file\r\n");
-      return;
-    }
-    size_t size = file.size();
-    char buf[size];
-    file.readBytes(buf, size);
-    buf[size] = '\0';
-    file.close();
-
-    // DynamicJsonDocument jsonBuffer(1024);
-    StaticJsonDocument<1152> json;
-    auto error = deserializeJson(json, buf);
-    if (error)
-    {
-      DEBUGLOG("Failed to parse config file\r\n");
-      return;
-    }
-    const char *templaterequest = json[FPSTR(pgm_templaterequest)];
-    const char *method = json[FPSTR(pgm_method)];
-    const char *url = json[FPSTR(pgm_url)];
-    const char *node = json[FPSTR(pgm_node)];
-    const char *apikey = json[FPSTR(pgm_apikey)];
-    //const char* fulljson = json[FPSTR(pgm_fulljson)];
-    const char *host = json[FPSTR(pgm_host)];
-
-    StaticJsonDocument<512> jsonBuffer;
-    jsonBuffer[FPSTR(pgm_voltage)] = bufVoltage;
-    jsonBuffer[FPSTR(pgm_ampere)] = bufAmpere;
-    jsonBuffer[FPSTR(pgm_watt)] = bufWatt;
-    jsonBuffer[FPSTR(pgm_pstkwh)] = bufPstkwh;
-
-    size_t len = measureJson(jsonBuffer);
-    char bufFulljson[len + 1];
-    serializeJson(jsonBuffer, bufFulljson, sizeof(bufFulljson));
-
-    StreamString output;
-    if (output.reserve(512))
-    {
-      output.printf(templaterequest,
-                    method,
-                    url,
-                    node,
-                    apikey,
-                    bufFulljson,
-                    host);
-      DEBUGLOG("%s\r\n", output.c_str());
-      client->write(output.c_str());
-      if (DEBUGVIAWS)
-      {
-        ws.textAll(PSTR("EmonCMS send request\r\n"));
-        ws.textAll(output.c_str());
-      }
-    }
-  },
-                     NULL);
-
-  if (!aClient->connect("emoncms.org", 80))
-  {
-    DEBUGLOG("Connect Fail\r\n");
-    if (DEBUGVIAWS)
-    {
-      ws.textAll(PSTR("EmonCMS Connect Fail\r\n"));
-    }
-    AsyncClient *client = aClient;
-    aClient = NULL;
-    delete client;
-  }
-}
-
-void runAsyncClientThingspeak()
-{
-  DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
-  if (bClient) //client already exists
-  {
-    // return;
-
-    if (DEBUGVIAWS)
-    {
-      ws.textAll(PSTR("Thingspeak client already exists, closing the client...\r\n"));
-    }
-    bClient->close(true);
-    AsyncClient *client = bClient;
-    bClient = NULL;
-    delete client;
-  }
-
-  bClient = new AsyncClient();
-  if (!bClient) //could not allocate client
-  {
-    if (DEBUGVIAWS)
-    {
-      ws.textAll(PSTR("Could not allocate client Thingspeak\r\n"));
-    }
-    return;
-  }
-
-  bClient->onError([](void *arg, AsyncClient *client, err_t error) {
-    DEBUGLOG("Connect Error\r\n");
-    if (DEBUGVIAWS)
-    {
-      ws.textAll(PSTR("Connect Thingspeak Error\r\n"));
-    }
-    bClient = NULL;
-    delete client;
-  },
-                   NULL);
-
-  bClient->onConnect([](void *arg, AsyncClient *client) {
-    DEBUGLOG("Connected\r\n");
-    if (DEBUGVIAWS)
-    {
-      ws.textAll(PSTR("Thingspeak connected\r\n"));
-    }
-    bClient->onError(NULL, NULL);
-
-    client->onDisconnect([](void *arg, AsyncClient *c) {
-      DEBUGLOG("\nDisconnected\r\n");
-      if (DEBUGVIAWS)
-      {
-        ws.textAll(PSTR("Thingspeak Disconnected\r\n"));
-      }
-      bClient = NULL;
-      delete c;
-    },
-                         NULL);
-
-    client->onData([](void *arg, AsyncClient *c, void *data, size_t len) {
-      DEBUGLOG("\r\nData: ");
-      DEBUGLOG("%d", len);
-
-      // uint8_t *d = (uint8_t *)data;
-      //  for (size_t i = 0; i < len; i++) {
-      //    Serial.write(d[i]);
-      //  }
-
-      // if (DEBUGVIAWS)
-      // {
-      //   char receivedData[len + 1];
-
-      //   uint8_t *d = (uint8_t *)data;
-      //   for (size_t i = 0; i < len; i++)
-      //   {
-      //     receivedData[i] = (char)d[i];
-      //   }
-      //   receivedData[len] = '\0';
-
-      //   char buf[32];
-      //   sprintf_P(buf, PSTR("Thingspeak onData, len=%u\r\n"), len);
-      //   ws.textAll(buf);
-      //   ws.textAll("\r\n");
-      //   ws.textAll(receivedData);
-      //   ws.textAll("\r\n");
-      // }
-
-      char temp[len + 1];
-
-      uint8_t *d = (uint8_t *)data;
-      for (size_t i = 0; i < len; i++)
-      {
-        static int j = 0;
-        char z = (char)d[i];
-        temp[j] = z;
-        j++;
-        if (z == '\n')
-        {
-          temp[j + 1] = '\0';
-          j = 0;
-          char status[] = "HTTP/1.1 200 OK";
-          int len = strlen(status);
-          if (strncmp(temp, status, len) == 0)
-          {
-            if (DEBUGVIAWS)
-              ws.textAll(status);
-
-            bClient->close(true);
-
-            // AsyncClient *client = bClient;
-            // bClient = NULL;
-            // delete c;
-
-            break;
-          }
-        }
-      }
-    },
-                   NULL);
-
-    //Construct HTTP request to THINGSPEAK
-    //"POST /update?field4=40&status=\"Horeeee bisa lagi\" HTTP/1.1\r\nHost: api.thingspeak.com\r\nX-THINGSPEAKAPIKEY:XJP1DKEH9OGVBGSX\r\n\r\n");
-
-    File file = MYFS.open(PSTR("/thingspeak.json"), "r");
-    if (!file)
-    {
-      DEBUGLOG("Failed to open config file\r\n");
-      return;
-    }
-    size_t size = file.size();
-    char buf[size];
-    file.readBytes(buf, size);
-    buf[size] = '\0';
-    file.close();
-
-    StaticJsonDocument<512> json;
-    auto error = deserializeJson(json, buf);
-    if (error)
-    {
-      DEBUGLOG("Failed to parse config file\r\n");
-      return;
-    }
-
-    const char *templaterequest = json[FPSTR(pgm_templaterequest)];
-    const char *method = json[FPSTR(pgm_method)];
-    const char *url = json[FPSTR(pgm_url)];
-    const char *host = json[FPSTR(pgm_host)];
-    const char *apikey = json[FPSTR(pgm_apikey)];
-
-    uint32_t freeheap = ESP.getFreeHeap();
-    char online[] = "ONLINE";
-    //const char* online = FPSTR(pgm_online);
-
-    StreamString output;
-    if (output.reserve(512))
-    {
-      output.printf(templaterequest,
-                    method,
-                    url,
-                    bufAmpere,
-                    bufWatt,
-                    bufVoltage,
-                    bufPstkwh,
-                    bufVar,
-                    bufApparentPower,
-                    bufPowerFactor,
-                    freeheap,
-                    online,
-                    host,
-                    apikey);
-      DEBUGLOG("%s\r\n", output.c_str());
-      client->write(output.c_str());
-      if (DEBUGVIAWS)
-      {
-        ws.textAll(PSTR("Thingspeak send request\r\n"));
-        ws.textAll(output.c_str());
-      }
-    }
-  },
-                     NULL);
-
-  if (!bClient->connect(PSTR("api.thingspeak.com"), 80))
-  {
-    DEBUGLOG("Connect Fail\r\n");
-    if (DEBUGVIAWS)
-    {
-      ws.textAll(PSTR("Thingspeak connect fail\r\n"));
-    }
-    AsyncClient *client = bClient;
-    bClient = NULL;
-    delete client;
-  }
-}
 
 void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
 {
@@ -981,30 +607,26 @@ void AsyncFSWebServer::start(FS *fs)
 
 // FS
 #ifdef USE_FatFS
-  if (!_fs) { // If MYFS is not started
-    if (_fs->begin(false, "/ffat", 3))
-    // if (false)
-    {
-      DEBUGLOG("Failed to mount file system\r\n");
-      return;
-    }
-    else
-    {
-      // ftpSrv.begin("esp8266","esp8266");
-    }
+  if (_fs->begin(false, "/ffat", 3))
+  // if (false)
+  {
+    DEBUGLOG("Failed to mount file system\r\n");
+    return;
+  }
+  else
+  {
+    // ftpSrv.begin("esp8266","esp8266");
   }
 #else
-  if (!_fs) { // If MYFS is not started
-    if (!_fs->begin())
-    // if (false)
-    {
-      DEBUGLOG("Failed to mount file system\r\n");
-      return;
-    }
-    else
-    {
-      // ftpSrv.begin("esp8266","esp8266");
-    }
+  if (!_fs->begin())
+  // if (false)
+  {
+    DEBUGLOG("Failed to mount file system\r\n");
+    return;
+  }
+  else
+  {
+    // ftpSrv.begin("esp8266","esp8266");
   }
 #endif
 
@@ -1434,6 +1056,7 @@ void AsyncFSWebServer::onWiFiConnected(WiFiEventStationModeConnected data)
 void AsyncFSWebServer::onWiFiDisconnected(WiFiEventStationModeDisconnected data)
 {
   DEBUGLOG("case STA_DISCONNECTED");
+  wifiGotIpFlag = false;
 
   if (CONNECTION_LED >= 0)
   {
@@ -1453,10 +1076,8 @@ void AsyncFSWebServer::onWifiGotIP(WiFiEventStationModeGotIP data)
   wifiGotIpFlag = true;
   WiFi.setAutoReconnect(true);
 
-  //Serial.printf_P(PSTR("\r\nWifi Got IP: %s\r\n"), data.ip.toString().c_str ());
-  DEBUGLOG("\r\nWifi Got IP\r\n");
   // DEBUGLOG("IP Address:\t%s\r\n", WiFi.localIP().toString().c_str());
-  DEBUGLOG("IP Address:\t%s\r\n", data.ip.toString().c_str());
+  DEBUGLOG("\r\nWifi Got IP: \t%s\r\n", data.ip.toString().c_str());
 }
 
 void AsyncFSWebServer::handleFileList(AsyncWebServerRequest *request)

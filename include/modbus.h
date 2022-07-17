@@ -3,6 +3,8 @@
 
 #include "SimpleModbusMaster.h"
 
+#include <ModbusRTU.h>
+
 // This is the easiest way to create new packets
 // Add as many as you want. TOTAL_NO_OF_PACKETS
 // is automatically updated.
@@ -56,7 +58,8 @@ extern float currentThreshold;
 // -------------------------------------------------------------------
 // Setting-up Modbus
 // -------------------------------------------------------------------
-extern void modbus_setup();
+extern void modbusSetup();
+extern void modbusSetup1();
 
 
 // -------------------------------------------------------------------
@@ -64,6 +67,8 @@ extern void modbus_setup();
 //
 // Call every time around loop()
 // -------------------------------------------------------------------
-extern void modbus_loop();
+extern void modbusLoop();
+extern void modbusLoop1();
 
 #endif
+

@@ -1,34 +1,73 @@
+// =================================================================================================
+// eModbus: Copyright 2020 by Michael Harwerth, Bert Melis and the contributors to ModbusClient
+//               MIT license - see license.md for details
+// =================================================================================================
+// Includes: <Arduino.h> for Serial etc., WiFi.h for WiFi support
 
-// #include <ESP8266WiFi.h>
+// modbus_construct(&packets[PACKET1], 3, READ_INPUT_REGISTERS, 10, 2, 0); // read Present Voltage (Volt)
+// modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2); // read Present Current (Ampere)
+// modbus_construct(&packets[PACKET3], 3, READ_INPUT_REGISTERS, 28, 2, 4); // read Present True Power (Watt or kW)
+// modbus_construct(&packets[PACKET4], 3, READ_INPUT_REGISTERS, 50, 2, 6); // read Accumulative Positive kWh
+// modbus_construct(&packets[PACKET1], 3, READ_INPUT_REGISTERS, 10, 2, 0);    // read Present Voltage (Volt)
+// modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2);    // read Present Current (Ampere)
+// modbus_construct(&packets[PACKET3], 3, READ_INPUT_REGISTERS, 28, 2, 4);    // read Present True Power (Watt or kW)
+// modbus_construct(&packets[PACKET4], 3, READ_INPUT_REGISTERS, 36, 2, 6);    // read Present Reactive Power (VAr or kVAr)
+// modbus_construct(&packets[PACKET5], 3, READ_INPUT_REGISTERS, 48, 2, 8);    // read Present Frequency (Hz)
+// modbus_construct(&packets[PACKET6], 3, READ_INPUT_REGISTERS, 50, 2, 10);   // read Accumulative Positive kWh
+// modbus_construct(&packets[PACKET7], 3, READ_INPUT_REGISTERS, 54, 2, 12);   // read Accumulative Positive kVarh
+// modbus_construct(&packets[PACKET8], 3, READ_INPUT_REGISTERS, 56, 2, 14);   // read Accumulative Negative kVarh
+// modbus_construct(&packets[PACKET9], 3, READ_INPUT_REGISTERS, 58, 2, 16);   // read Power Factor (Cos φ)
+// modbus_construct(&packets[PACKET10], 3, READ_INPUT_REGISTERS, 64, 2, 18);  // read Present Apparent Power (VA or kVA)
+// modbus_construct(&packets[PACKET11], 3, READ_INPUT_REGISTERS, 70, 2, 20);  // ???
+// modbus_construct(&packets[PACKET12], 3, READ_INPUT_REGISTERS, 544, 1, 22); // read Year and month ??
+// modbus_construct(&packets[PACKET13], 3, READ_INPUT_REGISTERS, 545, 1, 23); // read Day & Hour ??
+// modbus_construct(&packets[PACKET14], 3, READ_INPUT_REGISTERS, 546, 1, 24); // read Minute & Second
+
+#include "modbus.h"
+
+// #include "SimpleModbusMaster.h"
+
+#define SOFTWARESERIAL
+
 #include "FSWebServerLib.h"
 #include <ArduinoJson.h>
 #include "modbus.h"
 #include "mqtt.h"
 #include "timehelper.h"
 #include "gahe1progmem.h"
-#include "config.h"
+// #include "config.h"
 #include <Ticker.h>
 
-// #define RELEASE
+#define RELEASE
 
 #define DEBUGPORT Serial
 
 #ifndef RELEASE
-#define DEBUGLOG(fmt, ...)                   \
-  {                                          \
-    static const char pfmt[] PROGMEM = fmt;  \
-    DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
-  }
+#define DEBUGLOG(fmt, ...)                       \
+    {                                            \
+        static const char pfmt[] PROGMEM = fmt;  \
+        DEBUGPORT.printf_P(pfmt, ##__VA_ARGS__); \
+    }
 #else
 #define DEBUGLOG(...)
+#endif
+
+#if defined(SOFTWARESERIAL)
+#include "SoftwareSerial.h"
+uint8_t Rx = 14; // WEMOS_PIN_D5;
+uint8_t Tx = 12; // WEMOS_PIN_D6;
 #endif
 
 //////////////////// Port information ///////////////////
 #define baud 9600
 
-#define polling 50 // the scan rate; default value is 40
-#define timeout 100
-#define retry_count 30
+// #define polling 50 // the scan rate; default value is 40
+// #define modbusTimeout 100
+// #define retry_count 30
+
+#define polling 200 // the scan rate; default value is 40
+#define modbusTimeout 1000
+#define retry_count 10
 
 // used to toggle the receive/transmit pin on the driver
 #define TxEnablePin 5 // WEMOS_PIN_D1
@@ -37,36 +76,6 @@
 
 // The total amount of available memory on the master to store data
 #define TOTAL_NO_OF_REGISTERS 10 * TOTAL_NO_OF_PACKETS
-
-#define SOFTWARESERIAL
-
-#if defined(SOFTWARESERIAL)
-#include "SoftwareSerial.h"
-uint8_t Rx = 14; // WEMOS_PIN_D5;
-uint8_t Tx = 12; // WEMOS_PIN_D6;
-#endif
-
-// // This is the easiest way to create new packets
-// // Add as many as you want. TOTAL_NO_OF_PACKETS
-// // is automatically updated.
-// enum
-// {
-//   PACKET1,
-//   PACKET2,
-//   PACKET3,
-//   PACKET4,
-//   PACKET5,
-//   PACKET6,
-//   PACKET7,
-//   PACKET8,
-//   PACKET9,
-//   PACKET10,
-//   PACKET11,
-//   PACKET12,
-//   PACKET13,
-//   PACKET14,
-//   TOTAL_NO_OF_PACKETS // leave this last entry
-// };
 
 // Create an array of Packets to be configured
 Packet packets[TOTAL_NO_OF_PACKETS];
@@ -139,370 +148,384 @@ SoftwareSerial swSer;
 Ticker ticker1000msModbus;
 Ticker ticker60sModbus;
 
-bool tick1000msModbus;
-bool tick60sModbus;
+// bool tick1000msModbus;
+// bool tick60sModbus;
 uint32_t numModbusSuccessReq = 0;
 
-void Ticking1000ms()
+byte counter = 0;
+
+// void Ticking1000ms()
+// {
+//     tick1000msModbus = true;
+//     counter = 0;
+// }
+
+// void Ticking60s()
+// {
+//     tick60sModbus = true;
+// }
+
+////////////////////////////////////////////////////////////////////////
+ModbusRTU mb;
+
+#define SLAVE_ID 3
+#define REG_COUNT 24
+
+uint16_t res[REG_COUNT];
+
+bool newReadingAvailable = false;
+
+bool cbWrite(Modbus::ResultCode event, uint16_t transactionId, void *data)
 {
-  tick1000msModbus = true;
-}
+#ifdef ESP8266
 
-void Ticking60s()
-{
-  tick60sModbus = true;
-}
+    static float Voltage;
+    static float Ampere;
+    static float Watt;
+    static float Var;
+    static float Frequency;
+    static float Pstkwh;
+    static float Pstkvarh;
+    static float Ngtkvarh;
+    static float PowerFactor;
+    static float ApparentPower;
+    static float Unk2;
+    static unsigned long YearMonth;
+    static unsigned long DayHour;
+    static unsigned long MinuteSecond;
 
-void modbus_setup()
-{
-  ticker1000msModbus.attach(1, Ticking1000ms);
-  ticker60sModbus.attach(60, Ticking60s);
-
-#if defined(SOFTWARESERIAL)
-  swSer.begin(baud, SWSERIAL_8N1, Rx, Tx, false, 95, 11);
-  // swSer.begin(baud, SWSERIAL_8N1, Rx, Tx, false);
-  // begin(baud, config, rxPin, txPin, m_invert);
-  // swSer.begin(baud, SWSERIAL_8N1, 12, 12, false, 256);
-#endif
-
-  // Initialize each packet
-
-  /*
-    Read here if you want to know more about electricity / glossary term below
-    https://www.progress-energy.com/assets/www/docs/business/power-factor-how-effects-bill.pdf
-  */
-
-  // modbus_construct(&packets[PACKET1], 4, READ_HOLDING_REGISTERS, 0, 1, 0);   // DMM
-
-  modbus_construct(&packets[PACKET1], 3, READ_INPUT_REGISTERS, 10, 2, 0); // read Present Voltage (Volt)
-  modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2); // read Present Current (Ampere)
-  modbus_construct(&packets[PACKET3], 3, READ_INPUT_REGISTERS, 28, 2, 4); // read Present True Power (Watt or kW)
-  modbus_construct(&packets[PACKET4], 3, READ_INPUT_REGISTERS, 50, 2, 6); // read Accumulative Positive kWh
-
-  // modbus_construct(&packets[PACKET1], 3, READ_INPUT_REGISTERS, 10, 2, 0);    // read Present Voltage (Volt)
-  // modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2);    // read Present Current (Ampere)
-  // modbus_construct(&packets[PACKET3], 3, READ_INPUT_REGISTERS, 28, 2, 4);    // read Present True Power (Watt or kW)
-  // modbus_construct(&packets[PACKET4], 3, READ_INPUT_REGISTERS, 36, 2, 6);    // read Present Reactive Power (VAr or kVAr)
-  // modbus_construct(&packets[PACKET5], 3, READ_INPUT_REGISTERS, 48, 2, 8);    // read Present Frequency (Hz)
-  // modbus_construct(&packets[PACKET6], 3, READ_INPUT_REGISTERS, 50, 2, 10);   // read Accumulative Positive kWh
-  // modbus_construct(&packets[PACKET7], 3, READ_INPUT_REGISTERS, 54, 2, 12);   // read Accumulative Positive kVarh
-  // modbus_construct(&packets[PACKET8], 3, READ_INPUT_REGISTERS, 56, 2, 14);   // read Accumulative Negative kVarh
-  // modbus_construct(&packets[PACKET9], 3, READ_INPUT_REGISTERS, 58, 2, 16);   // read Power Factor (Cos φ)
-  // modbus_construct(&packets[PACKET10], 3, READ_INPUT_REGISTERS, 64, 2, 18);  // read Present Apparent Power (VA or kVA)
-  // modbus_construct(&packets[PACKET11], 3, READ_INPUT_REGISTERS, 70, 2, 20);  // ???
-  // modbus_construct(&packets[PACKET12], 3, READ_INPUT_REGISTERS, 544, 1, 22); // read Year and month ??
-  // modbus_construct(&packets[PACKET13], 3, READ_INPUT_REGISTERS, 545, 1, 23); // read Day & Hour ??
-  // modbus_construct(&packets[PACKET14], 3, READ_INPUT_REGISTERS, 546, 1, 24); // read Minute & Second
-
-  // Initialize the Modbus Finite State Machine
-  // modbus_configure(&Serial, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
-  // modbus_configure(&Serial1, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
-#if defined(SOFTWARESERIAL)
-  modbus_configure(&swSer, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
-#else
-  modbus_configure(&Serial, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
-#endif
-
-  oldrequestPACKET2 = packets[PACKET2].successful_requests;
-  oldrequestPACKET3 = packets[PACKET3].successful_requests;
-  oldrequestPACKET4 = packets[PACKET4].successful_requests;
-}
-
-void modbus_loop()
-{
-
-  // if (!tick1000msModbus)
-  //   return;
-  // else
-  //   tick1000msModbus = false;
-
-  /* Reset the ESP8266 if no Modbus connections for more than 5 minutes */
-
-  if (packets[PACKET1].connection == 1 && packets[PACKET2].connection == 1 && packets[PACKET3].connection == 1 && packets[PACKET4].connection == 1)
-  {
-    lastmillisoldPacketConnection = millis();
-    // oldWatt = Watt;
-  }
-  else if (millis() - lastmillisoldPacketConnection > 300000UL)
-  {
-    // while (true);
-    esp_restart();
-    return;
-  }
-  else
-  {
-    return;
-  }
-
-  static bool ledOn = 0;
-
-  // modbus_construct(&packets[PACKET1], 3, READ_INPUT_REGISTERS, 10, 2, 0);    // read Present Voltage (Volt)
-  // modbus_construct(&packets[PACKET2], 3, READ_INPUT_REGISTERS, 22, 2, 2);    // read Present Current (Ampere)
-  // modbus_construct(&packets[PACKET3], 3, READ_INPUT_REGISTERS, 28, 2, 4);    // read Present True Power (Watt or kW)
-  // modbus_construct(&packets[PACKET4], 3, READ_INPUT_REGISTERS, 36, 2, 6);    // read Present Reactive Power (VAr or kVAr)
-  // modbus_construct(&packets[PACKET5], 3, READ_INPUT_REGISTERS, 48, 2, 8);    // read Present Frequency (Hz)
-  // modbus_construct(&packets[PACKET6], 3, READ_INPUT_REGISTERS, 50, 2, 10);   // read Accumulative Positive kWh
-  // modbus_construct(&packets[PACKET7], 3, READ_INPUT_REGISTERS, 54, 2, 12);   // read Accumulative Positive kVarh
-  // modbus_construct(&packets[PACKET8], 3, READ_INPUT_REGISTERS, 56, 2, 14);   // read Accumulative Negative kVarh
-  // modbus_construct(&packets[PACKET9], 3, READ_INPUT_REGISTERS, 58, 2, 16);   // read Power Factor (Cos φ)
-  // modbus_construct(&packets[PACKET10], 3, READ_INPUT_REGISTERS, 64, 2, 18);  // read Present Apparent Power (VA or kVA)
-  // modbus_construct(&packets[PACKET11], 3, READ_INPUT_REGISTERS, 70, 2, 20);  // ???
-  // modbus_construct(&packets[PACKET12], 3, READ_INPUT_REGISTERS, 544, 1, 22); // read Year and month ??
-  // modbus_construct(&packets[PACKET13], 3, READ_INPUT_REGISTERS, 545, 1, 23); // read Day & Hour ??
-  // modbus_construct(&packets[PACKET14], 3, READ_INPUT_REGISTERS, 546, 1, 24); // read Minute & Second
-
-  // Check if Watt Threshold has been changed or buffer is empty.
-  // If yes, update the last watt Threshold and its buffer value
-  if (wattThreshold != lastwattThreshold || strlen(bufwattThreshold) == 0)
-  {
-    lastwattThreshold = wattThreshold;
-    dtostrf(wattThreshold, 0, 0, bufwattThreshold);
-  }
-
-  if (currentThreshold != currentThreshold_old || strlen(bufCurrentThreshold) == 0)
-  {
-    currentThreshold_old = currentThreshold;
-    dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
-  }
-
-  numModbusSuccessReq++;
-
-  // ledOn = !ledOn;
-  // digitalWrite(PIN_LED, ledOn);
-
-  if (packets[PACKET2].successful_requests != oldrequestPACKET2 &&
-      packets[PACKET3].successful_requests != oldrequestPACKET3 &&
-      packets[PACKET4].successful_requests != oldrequestPACKET4)
-  {
-    // update old values
-    oldrequestPACKET2 = packets[PACKET2].successful_requests;
-    oldrequestPACKET3 = packets[PACKET3].successful_requests;
-    oldrequestPACKET4 = packets[PACKET4].successful_requests;
-  }
-  else
-  {
-    return;
-  }
-
-  float Voltage;
-  float Ampere;
-  float Watt;
-  // float Var;
-  // float Frequency;
-  float Pstkwh;
-  // float Pstkvarh;
-  // float Ngtkvarh;
-  // float PowerFactor;
-  // float ApparentPower;
-  // float Unk2;
-
-  unsigned long temp;
-  unsigned long *p = &temp;
-
-  // float Voltage;
-  temp = (unsigned long)regs[0] << 16 | regs[1];
-  Voltage = *(float *)p;
-  Voltage = Voltage - 1.9;
-
-  // float Ampere;
-  unsigned long tempCurrent = (unsigned long)regs[2] << 16 | regs[3];
-  unsigned long *pCurrent = &tempCurrent;
-  Ampere = *(float *)pCurrent;
-
-  // float Watt;
-  temp = (unsigned long)regs[4] << 16 | regs[5];
-  Watt = *(float *)p;
-
-  // //float Var;
-  // temp = (unsigned long)regs[6] << 16 | regs[7];
-  // Var = *(float *)p;
-
-  // //float Frequency;
-  // temp = (unsigned long)regs[8] << 16 | regs[9];
-  // Frequency = *(float *)p;
-
-  // float Pstkwh;
-  temp = (unsigned long)regs[6] << 16 | regs[7];
-  Pstkwh = *(float *)p;
-
-  // //float Pstkvarh;
-  // temp = (unsigned long)regs[12] << 16 | regs[13];
-  // Pstkvarh = *(float *)p;
-
-  // //float Ngtkvarh;
-  // temp = (unsigned long)regs[14] << 16 | regs[15];
-  // Ngtkvarh = *(float *)p;
-
-  // //float PowerFactor;
-  // temp = (unsigned long)regs[16] << 16 | regs[17];
-  // PowerFactor = *(float *)p;
-
-  // //float ApparentPower;
-  // temp = (unsigned long)regs[18] << 16 | regs[19];
-  // ApparentPower = *(float *)p;
-
-  // //float Unk2;
-  // temp = (unsigned long)regs[20] << 16 | regs[21];
-  // Unk2 = *(float *)p;
-
-
-  static unsigned int count_avg;
-  static float voltage_avg;
-  static float ampere_avg;
-  static float watt_avg;
-  static float pstkwh_avg;
-
-  count_avg++;
-  voltage_avg = voltage_avg + Voltage;
-  ampere_avg = ampere_avg + Ampere;
-  watt_avg = watt_avg + Watt;
-  pstkwh_avg = pstkwh_avg + Pstkwh;
-
-
-  dtostrf(Voltage, 0, 1, bufVoltage); /* Voltage */
-  dtostrf(Ampere, 0, 2, bufAmpere);   /* Ampere */
-  dtostrf(Watt, 0, 1, bufWatt);       /* Wattage */
-  // dtostrf(Var, 0, 1, bufVar);                     /* Positive Var */
-  // dtostrf(Frequency, 0, 1, bufFrequency);         /* Frequency Hz */
-  dtostrf(Pstkwh, 0, 2, bufPstkwh); /* Positive kWh */
-  // dtostrf(Pstkvarh, 0, 1, bufPstkvarh);           /* Positive kVarh */
-  // dtostrf(Ngtkvarh, 0, 1, bufNgtkvarh);           /* Negative kVarh */
-  // dtostrf(PowerFactor, 0, 1, bufPowerFactor);     /* Power Factor */
-  // dtostrf(ApparentPower, 0, 1, bufApparentPower); /* Apparent Power */
-  // dtostrf(Unk2, 0, 1, bufUnk2);                   /* Unk2 */
-
-  if (tick1000msModbus)
-  {
-    ledOn = !ledOn;
-    digitalWrite(PIN_LED, false);
-
-    tick1000msModbus = false;
-
-    // if (numModbusSuccessReq <= 60)
-    //   return;
-
-    StaticJsonDocument<512> root;
-
-    root[FPSTR(pgm_voltage)] = atof(bufVoltage);
-    root[FPSTR(pgm_ampere)] = atof(bufAmpere);
-    root[FPSTR(pgm_watt)] = atof(bufWatt);
-    // root[FPSTR(pgm_var)] = bufVar;
-    // root[FPSTR(pgm_frequency)] = bufFrequency;
-    root[FPSTR(pgm_pstkwh)] = atof(bufPstkwh);
-    // root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
-    // root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
-    // root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
-    // root[FPSTR(pgm_apparentpower)] = bufApparentPower;
-    // root[FPSTR(pgm_unk2)] = bufUnk2;
-    root["heap"] = ESP.getFreeHeap();
-
-    size_t len = measureJson(root);
-
-    char buf[len + 1];
-    serializeJson(root, buf, sizeof(buf));
-
-    // if (ws.hasClient(clientID))
-    // {
-    //   ws.textAll(buf);
-    // }
-
-    if (mqttClient.connected())
+    if (event != Modbus::EX_SUCCESS)
     {
-      char bufFullTopic[64];
-      strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
-      strncat(bufFullTopic, "/meterreading/1s", sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
-      mqttClient.publish(
-          bufFullTopic, // topic
-          0,            // qos
-          0,            // retain
-          buf           // payload
-      );
-
-      if (tick60sModbus) {
-        tick60sModbus = false;
-        char bufFullTopic[64];
-        strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
-        strncat(bufFullTopic, "/meterreading/60s", sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
-        mqttClient.publish(
-            bufFullTopic, // topic
-            0,            // qos
-            0,            // retain
-            buf           // payload
-        );
-      }
+        DEBUGLOG("Request result: 0x%02X, Mem: %d\n", event, ESP.getFreeHeap());
+        // Serial.print("Request result: 0x");
+        // Serial.print(event, HEX);
     }
-  }
+    else if (event == Modbus::EX_SUCCESS && counter == 0)
+    {
 
-  ledOn = !ledOn;
-  digitalWrite(PIN_LED, true);
+        // uint32_t value32;
+        // mb.readHreg(SLAVE_ID, 8, (uint16_t *)&value32, 2, cbWrite);
+        // value32 = (value32 >> 16) | (value32 << 16); // Uncomment for words swap
+        // Serial.printf("voltage = %.2f\n", value32);
 
-  // Serial.print("requests: ");
-  // Serial.println(packets[PACKET1].requests);
-  // Serial.print("successful_requests: ");
-  // Serial.println(packets[PACKET1].successful_requests);
-  // Serial.print("failed_requests: ");
-  // Serial.println(packets[PACKET1].failed_requests);
-  // Serial.print("exception_errors: ");
-  // Serial.println(packets[PACKET1].exception_errors);
-  // Serial.print("connection: ");
-  // Serial.println(packets[PACKET1].connection);
+        unsigned long temp;
+        unsigned long *p = &temp;
+
+        // float Voltage;
+        temp = (unsigned long)res[0] << 16 | res[1];
+        Voltage = *(float *)p;
+        // Voltage = Voltage - 1.9;
+
+        // uint16_t const value[2] = { res[13], res[12] };  // Assuming little-endianness
+        // float f;
+
+        // std::memcpy(reinterpret_cast<void*>(&f), reinterpret_cast<void const*>(value), sizeof f);
+
+        unsigned long tempCurrent = (unsigned long)res[12] << 16 | res[13];
+        unsigned long *pCurrent = &tempCurrent;
+        Ampere = *(float *)pCurrent;
+
+        // float Watt;
+        temp = (unsigned long)res[18] << 16 | res[19];
+        Watt = *(float *)p;
+
+        // //float Var;
+        // temp = (unsigned long)regs[6] << 16 | regs[7];
+        // Var = *(float *)p;
+
+        // //float Frequency;
+        // temp = (unsigned long)regs[8] << 16 | regs[9];
+        // Frequency = *(float *)p;
+
+        // float Pstkwh;
+        // temp = (unsigned long)res[40] << 16 | res[41];
+        // Pstkwh = *(float *)p;
+
+        // Serial.printf("Volt=%.2f Amp=%.2f Watt=%.2f kWh=%.2f\n", Voltage, Ampere, Watt, Pstkwh);
+        DEBUGLOG("counter=%d Volt=%.2f Amp=%.2f Watt=%.2f\n", counter, Voltage, Ampere, Watt);
+        // Serial.println(Voltage);
+        // Serial.println(Ampere);
+        // Serial.println(Watt);
+        // Serial.println(Voltage);
+    }
+    else if (event == Modbus::EX_SUCCESS && counter == 1)
+    {
+        unsigned long temp;
+        unsigned long *p = &temp;
+
+        // float Var;
+        temp = (unsigned long)res[0] << 16 | res[1];
+        Var = *(float *)p;
+
+        // float Frequency;
+        temp = (unsigned long)res[12] << 16 | res[13];
+        Frequency = *(float *)p;
+
+        // float Pstkwh;
+        temp = (unsigned long)res[14] << 16 | res[15];
+        Pstkwh = *(float *)p;
+
+        // float Pstkvarh;
+        temp = (unsigned long)res[18] << 16 | res[19];
+        Pstkvarh = *(float *)p;
+
+        // float Ngtkvarh;
+        temp = (unsigned long)res[20] << 16 | res[21];
+        Ngtkvarh = *(float *)p;
+
+        // float PowerFactor;
+        temp = (unsigned long)res[22] << 16 | res[23];
+        PowerFactor = *(float *)p;
+
+        DEBUGLOG("counter=%d Var=%.2f Frequency=%.2f Pstkwh=%.2f Pstkvarh=%.2f Ngtkvarh=%.2f PowerFactor=%.2f\n",
+                 counter, Var, Frequency, Pstkwh, Pstkvarh, Ngtkvarh, PowerFactor);
+
+        newReadingAvailable = true;
+    }
+    else if (event == Modbus::EX_SUCCESS && counter == 2)
+    {
+        unsigned long temp;
+        unsigned long *p = &temp;
+
+        // float ApparentPower VA or kVA
+        temp = (unsigned long)res[0] << 16 | res[1];
+        ApparentPower = *(float *)p;
+
+        // float PowerFactor;
+        temp = (unsigned long)res[6] << 16 | res[7];
+        Unk2 = *(float *)p;
+
+        DEBUGLOG("counter=%d ApparentPower=%.2f Unk2=%.2f\n", counter, ApparentPower, Unk2);
+    }
+    else if (event == Modbus::EX_SUCCESS && counter == 3)
+    {
+        YearMonth = (unsigned long)res[0];
+        DayHour = (unsigned long)res[1];
+        MinuteSecond = (unsigned long)res[2];
+
+        DEBUGLOG("counter=%d YearMonth=%lu DayHour=%lu MinuteSecond=%lu\n", counter, YearMonth, DayHour, MinuteSecond);
+    }
+#elif ESP32
+    Serial.printf_P("Request result: 0x%02X, Mem: %d\n", event, ESP.getFreeHeap());
+#else
+    Serial.print("Request result: 0x");
+    Serial.print(event, HEX);
+#endif
+
+    counter++;
+
+    if (counter >= 4)
+        counter = 0;
+
+    if (newReadingAvailable)
+    {
+        newReadingAvailable = false;
+
+        dtostrf(Voltage, 0, 1, bufVoltage); /* Voltage */
+        dtostrf(Ampere, 0, 2, bufAmpere);   /* Ampere */
+        dtostrf(Watt, 0, 1, bufWatt);       /* Wattage */
+        // dtostrf(Var, 0, 1, bufVar);                     /* Positive Var */
+        // dtostrf(Frequency, 0, 1, bufFrequency);         /* Frequency Hz */
+        dtostrf(Pstkwh, 0, 2, bufPstkwh); /* Positive kWh */
+        // dtostrf(Pstkvarh, 0, 1, bufPstkvarh);           /* Positive kVarh */
+        // dtostrf(Ngtkvarh, 0, 1, bufNgtkvarh);           /* Negative kVarh */
+        // dtostrf(PowerFactor, 0, 1, bufPowerFactor);     /* Power Factor */
+        // dtostrf(ApparentPower, 0, 1, bufApparentPower); /* Apparent Power */
+        // dtostrf(Unk2, 0, 1, bufUnk2);                   /* Unk2 */
+
+        StaticJsonDocument<512> root;
+
+        root[FPSTR(pgm_voltage)] = atof(bufVoltage);
+        root[FPSTR(pgm_ampere)] = atof(bufAmpere);
+        root[FPSTR(pgm_watt)] = atof(bufWatt);
+        // root[FPSTR(pgm_var)] = bufVar;
+        // root[FPSTR(pgm_frequency)] = bufFrequency;
+        root[FPSTR(pgm_pstkwh)] = atof(bufPstkwh);
+        // root[FPSTR(pgm_pstkvarh)] = bufPstkvarh;
+        // root[FPSTR(pgm_ngtkvarh)] = bufNgtkvarh;
+        // root[FPSTR(pgm_powerfactor)] = bufPowerFactor;
+        // root[FPSTR(pgm_apparentpower)] = bufApparentPower;
+        // root[FPSTR(pgm_unk2)] = bufUnk2;
+        root["heap"] = ESP.getFreeHeap();
+
+        size_t len = measureJson(root);
+
+        char buf[len + 1];
+        serializeJson(root, buf, sizeof(buf));
+
+        // if (ws.hasClient(clientID))
+        // {
+        //   ws.textAll(buf);
+        // }
+
+        if (mqttClient.connected())
+        {
+            char bufFullTopic[64];
+            strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
+            strncat(bufFullTopic, "/meterreading/1s", (sizeof(bufFullTopic) - 1) / sizeof(bufFullTopic[0]));
+            mqttClient.publish(
+                bufFullTopic, // topic
+                0,            // qos
+                0,            // retain
+                buf           // payload
+            );
+
+            static uint8_t menit = 0;
+            if (minLocal != menit)
+            {
+                menit = minLocal;
+                char bufFullTopic[64];
+                strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
+                strncat(bufFullTopic, "/meterreading/60s", (sizeof(bufFullTopic) - 1) / sizeof(bufFullTopic[0]));
+                mqttClient.publish(
+                    bufFullTopic, // topic
+                    0,            // qos
+                    0,            // retain
+                    buf           // payload
+                );
+            }
+        }
+    }
+
+    return true;
 }
+
+void modbusSetup()
+{
+#if defined(ESP8266)
+    swSer.begin(baud, SWSERIAL_8N1, Rx, Tx);
+    mb.begin(&swSer, TxEnablePin);
+#elif defined(ESP32)
+    Serial1.begin(9600, SERIAL_8N1);
+    mb.begin(&Serial1, TxEnablePin);
+#else
+    Serial1.begin(9600, SERIAL_8N1);
+    mb.begin(&Serial1, TxEnablePin);
+    mb.setBaudrate(9600);
+#endif
+    mb.master();
+}
+
+void modbusLoop()
+{
+    if (wattThreshold != lastwattThreshold || strlen(bufwattThreshold) == 0)
+    {
+        lastwattThreshold = wattThreshold;
+        dtostrf(wattThreshold, 0, 0, bufwattThreshold);
+    }
+
+    if (currentThreshold != currentThreshold_old || strlen(bufCurrentThreshold) == 0)
+    {
+        currentThreshold_old = currentThreshold;
+        dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
+    }
+
+    static uint8_t detik = 0;
+    if (secLocal != detik)
+    {
+
+        if (!mb.slave())
+        {
+            // uint16_t res[REG_COUNT];
+            // unsigned long res[REG_COUNT];
+            // mb.Hreg(1, 1, coils, 20, cbWrite);
+            uint16_t STARTADDRESS;
+            switch (counter)
+            {
+            case 0:
+                STARTADDRESS = 10;
+                mb.readIreg(SLAVE_ID, STARTADDRESS, res, REG_COUNT, cbWrite); // write all relays statuses to dest.
+                break;
+            case 1:
+                STARTADDRESS = 36;
+                mb.readIreg(SLAVE_ID, STARTADDRESS, res, REG_COUNT, cbWrite); // write all relays statuses to dest.
+                break;
+            case 2:
+                STARTADDRESS = 64;
+                mb.readIreg(SLAVE_ID, STARTADDRESS, res, REG_COUNT, cbWrite); // write all relays statuses to dest.
+                break;
+            case 3:
+
+                detik = secLocal; // INI HARUS DISINI !!
+
+                STARTADDRESS = 544;
+                mb.readIreg(SLAVE_ID, STARTADDRESS, res, REG_COUNT, cbWrite); // write all relays statuses to dest.
+                break;
+            default:
+                // default
+                break;
+            }
+        }
+
+        while (mb.slave())
+        { // slave() is true while request is processed
+            mb.task();
+            // yield();
+        }
+
+        // mb.task();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+
 
 void modbus_loop_DMM()
 {
-  static bool ledOn = 0;
+    static bool ledOn = 0;
 
-  modbus_construct(&packets[PACKET1], 4, READ_HOLDING_REGISTERS, 0, 1, 0); // read Present Voltage (Volt)
+    modbus_construct(&packets[PACKET1], 4, READ_HOLDING_REGISTERS, 0, 1, 0); // read Present Voltage (Volt)
 
-  bool success = 0;
-  static uint32_t numSuccessReq_old = 0;
-  uint32_t numSuccessReq = packets[PACKET1].successful_requests;
+    bool success = 0;
+    static uint32_t numSuccessReq_old = 0;
+    uint32_t numSuccessReq = packets[PACKET1].successful_requests;
 
-  static uint32_t numFailedReq_old = 0;
-  uint32_t numFailedReq = packets[PACKET1].failed_requests;
+    static uint32_t numFailedReq_old = 0;
+    uint32_t numFailedReq = packets[PACKET1].failed_requests;
 
-  if (numSuccessReq != numSuccessReq_old || numFailedReq != numFailedReq_old)
-  {
-    if (numSuccessReq != numSuccessReq_old)
+    if (numSuccessReq != numSuccessReq_old || numFailedReq != numFailedReq_old)
     {
-      // update old values
-      numSuccessReq_old = numSuccessReq;
-      // DEBUGLOG("successful_requests [PACKET1]: %d\r\n", packets[PACKET1].successful_requests);
-      success = true;
+        if (numSuccessReq != numSuccessReq_old)
+        {
+            // update old values
+            numSuccessReq_old = numSuccessReq;
+            // DEBUGLOG("successful_requests [PACKET1]: %d\r\n", packets[PACKET1].successful_requests);
+            success = true;
+        }
+
+        if (numFailedReq != numFailedReq_old)
+        {
+            // update old values
+            numFailedReq_old = numFailedReq;
+            DEBUGLOG("failed_requests [PACKET1]: %d\r\n", packets[PACKET1].failed_requests);
+
+            digitalWrite(2, HIGH);
+        }
+    }
+    else
+    {
+        return;
     }
 
-    if (numFailedReq != numFailedReq_old)
+    if (!success)
+        return;
+
+    ledOn = !ledOn;
+    digitalWrite(2, ledOn);
+
+    unsigned long DMM;
+
+    unsigned long temp;
+
+    temp = (unsigned long)regs[0];
+    DMM = temp;
+    static uint32_t DMM_old = 0;
+    if (DMM_old != DMM)
     {
-      // update old values
-      numFailedReq_old = numFailedReq;
-      DEBUGLOG("failed_requests [PACKET1]: %d\r\n", packets[PACKET1].failed_requests);
-
-      digitalWrite(2, HIGH);
+        DMM_old = DMM;
+        float DMM_float;
+        DMM_float = DMM / 2.0;
+        DEBUGLOG("DMM: %.1f\r\n", DMM_float);
     }
-  }
-  else
-  {
-    return;
-  }
-
-  if (!success)
-    return;
-
-  ledOn = !ledOn;
-  digitalWrite(2, ledOn);
-
-  unsigned long DMM;
-
-  unsigned long temp;
-
-  temp = (unsigned long)regs[0];
-  DMM = temp;
-  static uint32_t DMM_old = 0;
-  if (DMM_old != DMM)
-  {
-    DMM_old = DMM;
-    float DMM_float;
-    DMM_float = DMM / 2.0;
-    DEBUGLOG("DMM: %.1f\r\n", DMM_float);
-  }
 }

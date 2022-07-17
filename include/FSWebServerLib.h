@@ -226,11 +226,9 @@ protected:
   static unsigned char h2int(char c);
   static boolean checkRange(String Value);
 
-  //void send_meter_reading(AsyncWebServerRequest *request);
-  //void send_classic_page(AsyncWebServerRequest *request);
+
   void send_classic_xml_page(AsyncWebServerRequest *request);
-  // void send_ssdp_xml_page(AsyncWebServerRequest *request);
-  //void send_test_page(AsyncWebServerRequest *request);
+
 
   void handleSaveMqtt(AsyncWebServerRequest *request);
   //void handleStatus(AsyncWebServerRequest *request);

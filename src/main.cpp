@@ -12,11 +12,7 @@
 // #include "config.h"
 #include "modbus.h"
 #include "mqtt.h"
-// #include "dhtlib.h"
-// #include "thingspeakhelper.h"
 #include "asyncpinghelper.h"
-
-// #include <ESP8266FtpServer.h>
 
 
 //#define RELEASE
@@ -38,24 +34,27 @@
 
 
 void setup()
-{
-  
-  //pinMode(D5, INPUT_PULLUP);
+{  
   DEBUGPORT.begin(115200);
+
+  pinMode(2, OUTPUT); // Initialize the BUILTIN_LED pin as an output
 
 #ifndef RELEASE
   DEBUGPORT.setDebugOutput(true);
 #endif
 
-  DEBUGLOG("Mounting FS...\r\n");
-  if (!MYFS.begin())
-  {
-    DEBUGLOG("Failed to mount file system\r\n");
-    return;
-  } 
+  // DEBUGLOG("Mounting FS...\r\n");
+  // if (!MYFS.begin())
+  // {
+  //   DEBUGLOG("Failed to mount file system\r\n");
+  //   return;
+  // } 
+
+  DEBUGLOG("Starting ESPHTTPServer...\r\n");
+  ESPHTTPServer.start(&MYFS);
 
   DEBUGLOG("Setup MODBUS...\r\n");
-  modbus_setup();
+  modbusSetup();
 
   DEBUGLOG("RTC Time...\r\n");
   RtcSetup();
@@ -69,8 +68,7 @@ void setup()
   DEBUGLOG("Setup AsyncPING...\r\n");
   PingSetup();
 
-  DEBUGLOG("Starting ESPHTTPServer...\r\n");
-  ESPHTTPServer.start(&MYFS);
+
 
   // DEBUGLOG("RTC Time...\r\n");
   // RtcSetup();
@@ -96,7 +94,7 @@ void setup()
 
   // Thingspeaksetup();
 
-  pinMode(2, OUTPUT); // Initialize the BUILTIN_LED pin as an output
+
 
   DEBUGLOG("Setup completed!\r\n\r\n");
 }
@@ -113,8 +111,11 @@ void loop()
 {
   TimeLoop();
 
-  modbus_update();
-  modbus_loop(); 
+  
+
+  // modbus_update();
+  // modbus_loop(); 
+  modbusLoop();
   ESPHTTPServer.loop();
 
   mqtt_loop();

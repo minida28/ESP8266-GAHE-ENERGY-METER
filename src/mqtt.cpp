@@ -26,7 +26,7 @@
 #include <Arduino.h>
 
 #include <ArduinoJson.h>
-#include "modbus.h"
+// #include "modbus.h"
 #include "mqtt.h"
 #include "gahe1progmem.h"
 #include "FSWebServerLib.h"
@@ -78,7 +78,9 @@ const char pgm_publish_1[] PROGMEM = "publish_1";
 // const char pgm_mqtt_lwtretain[] PROGMEM = "lwtretain";
 // const char pgm_mqtt_lwtpayload[] PROGMEM = "lwtpayload";
 
-bool wifiConnectedFlag = false;
+bool triggerConnectMqtt = false;
+
+
 bool mqttConnectedFlag = false;
 bool mqttDisconnectedFlag = false;
 bool mqttPublishFlag = false;
@@ -107,26 +109,25 @@ strConfigMqtt configMqtt;
 
 void connectToMqtt()
 {
-    DEBUGLOG("Connecting to MQTT...\r\n");
-    mqttClient.connect();
+    triggerConnectMqtt =  true;
 }
 
-void onWifiGotIp(const WiFiEventStationModeGotIP &event)
-{
-    DEBUGLOG("Connected to Wi-Fi.\r\n");
+// void onWifiGotIp(const WiFiEventStationModeGotIP &event)
+// {
+//     DEBUGLOG("Connected to Wi-Fi.\r\n");
     
-    if (WiFi.isConnected())
-    {
-        mqttReconnectTimer.once(5, connectToMqtt);
-    }
-}
+//     if (WiFi.isConnected())
+//     {
+//         mqttReconnectTimer.once(5, connectToMqtt);
+//     }
+// }
 
-void onWifiDisconnect(const WiFiEventStationModeDisconnected &event)
-{
-    DEBUGLOG("Disconnected from Wi-Fi.\r\n");
-    mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
-                                 // wifiReconnectTimer.once(2, connectToWifi);
-}
+// void onWifiDisconnect(const WiFiEventStationModeDisconnected &event)
+// {
+//     DEBUGLOG("Disconnected from Wi-Fi.\r\n");
+//     mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+//                                  // wifiReconnectTimer.once(2, connectToWifi);
+// }
 
 
 
@@ -149,7 +150,7 @@ void onMqttConnect(bool sessionPresent)
 
     char bufFullTopic[64];
     strlcpy(bufFullTopic, ESPHTTPServer._config.hostname, sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
-    strncat(bufFullTopic, "/mqttstatus", sizeof(bufFullTopic) / sizeof(bufFullTopic[0]));
+    strncat(bufFullTopic, "/mqttstatus", (sizeof(bufFullTopic)-1) / sizeof(bufFullTopic[0]));
 
     // publish 1
     mqttClient.publish(
@@ -160,8 +161,8 @@ void onMqttConnect(bool sessionPresent)
     );
 
     // publish 2
-    dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
-    mqttClient.publish("/rumah/sts/kwh1/currentthreshold", 2, true, bufCurrentThreshold);
+    // dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
+    // mqttClient.publish("/rumah/sts/kwh1/currentthreshold", 2, true, bufCurrentThreshold);
 
     // subscribe 1
     mqttClient.subscribe(
@@ -386,8 +387,8 @@ bool load_config_mqtt()
     else
     {
         char bufSlash[] = "/";
-        strncat(buflwttopic, bufSlash, sizeof(buflwttopic) / sizeof(buflwttopic[0]));
-        strncat(buflwttopic, lwttopicprefix, sizeof(buflwttopic) / sizeof(buflwttopic[0]));
+        strncat(buflwttopic, bufSlash, (sizeof(buflwttopic)-1) / sizeof(buflwttopic[0]));
+        strncat(buflwttopic, lwttopicprefix, (sizeof(buflwttopic)-1) / sizeof(buflwttopic[0]));
     }
 
     // store full topic
@@ -498,8 +499,6 @@ bool mqtt_load_pubsubconfig()
 bool mqtt_setup()
 {
     // register mqtt handler
-    wifiConnectHandlerForMqtt = WiFi.onStationModeGotIP(onWifiGotIp);
-    wifiDisconnectHandlerForMqtt = WiFi.onStationModeDisconnected(onWifiDisconnect);
 
     mqttClient.onConnect(onMqttConnect);
     mqttClient.onDisconnect(onMqttDisconnect);
@@ -544,17 +543,22 @@ bool mqtt_setup()
 void mqtt_loop()
 {
 
+    static bool oldWifiGotIpFlag = false;
+    if (wifiGotIpFlag != oldWifiGotIpFlag) {
+        oldWifiGotIpFlag = wifiGotIpFlag;
 
-    // if (mqttConnectedFlag)
-    // {
-    //     mqttConnectedFlag = false;
-    // }
+        if (wifiGotIpFlag) {
+            mqttReconnectTimer.once(5, connectToMqtt);
+        } else {
+            mqttReconnectTimer.detach();
+        }
+    }
 
-    // if (mqttDisconnectedFlag)
-    // {
-    //   mqttDisconnectedFlag = false;
-    //   MqttDisconnectedCb();
-    // }
+    if (triggerConnectMqtt) {
+        triggerConnectMqtt = false;
+        DEBUGLOG("Connecting to MQTT...\r\n");
+        mqttClient.connect();
+    }
 
 
     if (mqttOnMessageFlag)
@@ -570,16 +574,15 @@ void mqtt_loop()
             DEBUGLOG("MQTT received [%s]\r\n", bufTopic);
             DEBUGLOG("Payload: %s\r\n", bufPayload);
 
-            // copy payload to buffer
-            //  strlcpy(bufwattThreshold, bufPayload, sizeof(bufwattThreshold) / sizeof(bufwattThreshold[0]));
 
-            wattThreshold = atoi(bufPayload);
+
+            // wattThreshold = atoi(bufPayload);
 
             // roundup value
-            dtostrf(wattThreshold, 0, 0, bufwattThreshold);
+            // dtostrf(wattThreshold, 0, 0, bufwattThreshold);
 
             // acknowledge the receipt by sending back status
-            mqttClient.publish(PSTR("/rumah/sts/kwh1/wattthreshold"), 2, true, bufwattThreshold);
+            // mqttClient.publish(PSTR("/rumah/sts/kwh1/wattthreshold"), 2, true, bufwattThreshold);
         }
 
         const char *subscribe_2_topic = configMqtt.subscribe_2_topic;
@@ -593,15 +596,15 @@ void mqtt_loop()
             DEBUGLOG("Payload: %s\r\n", bufPayload);
 
             // copy payload
-            strlcpy(bufCurrentThreshold, bufPayload, sizeof(bufCurrentThreshold) / sizeof(bufCurrentThreshold[0]));
+            // strlcpy(bufCurrentThreshold, bufPayload, sizeof(bufCurrentThreshold) / sizeof(bufCurrentThreshold[0]));
 
-            currentThreshold = atof(bufPayload);
+            // currentThreshold = atof(bufPayload);
 
             // roundup value
-            dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
+            // dtostrf(currentThreshold, 0, 1, bufCurrentThreshold);
 
             // acknowledge the receipt by sending back status
-            mqttClient.publish(PSTR("/rumah/sts/kwh1/currentthreshold"), 2, true, bufCurrentThreshold);
+            // mqttClient.publish(PSTR("/rumah/sts/kwh1/currentthreshold"), 2, true, bufCurrentThreshold);
         }
     }
 }
